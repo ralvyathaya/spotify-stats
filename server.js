@@ -24,7 +24,7 @@ app.post("/login", async (req, res) => {
       refreshToken: data.body.refresh_token,
       expiresIn: data.body.expires_in,
     })
-  } catch (err) {
+  } catch {
     res.status(400).json({ error: "Failed to login" })
   }
 })
@@ -38,7 +38,7 @@ app.post("/refresh", async (req, res) => {
       accessToken: data.body.access_token,
       expiresIn: data.body.expires_in,
     })
-  } catch (err) {
+  } catch {
     res.status(400).json({ error: "Failed to refresh token" })
   }
 })
@@ -64,7 +64,7 @@ app.get("/recommendations", async (req, res) => {
   try {
     const data = await spotifyApi.getRecommendations(params)
     res.json(data.body.tracks)
-  } catch (err) {
+  } catch {
     res.status(400).json({ error: "Failed to get recommendations" })
   }
 })

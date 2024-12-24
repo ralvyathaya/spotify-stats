@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Button } from '../components/ui/button'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
+import Image from 'next/image'
 
 const AUTH_URL = `https://accounts.spotify.com/authorize?client_id=${process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI}&scope=user-read-private%20user-read-email%20user-top-read`
 
@@ -65,7 +66,13 @@ export default function Home() {
                   <CardDescription>{track.artists[0].name}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <img src={track.album.images[0].url} alt={track.name} className="w-full" />
+                  <Image 
+                    src={track.album.images[0].url} 
+                    alt={track.name} 
+                    width={300}
+                    height={300}
+                    className="w-full"
+                  />
                 </CardContent>
                 <CardFooter>
                   <Button asChild>

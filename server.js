@@ -10,9 +10,9 @@ app.use(cors())
 app.use(express.json())
 
 const spotifyApi = new SpotifyWebApi({
-  clientId: process.env.SPOTIFY_CLIENT_ID,
+  clientId: process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID,
   clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
-  redirectUri: process.env.SPOTIFY_REDIRECT_URI,
+  redirectUri: process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI,
 })
 
 app.post("/login", async (req, res) => {
@@ -24,8 +24,8 @@ app.post("/login", async (req, res) => {
       refreshToken: data.body.refresh_token,
       expiresIn: data.body.expires_in,
     })
-  } catch {
-    res.status(400).json({ error: "Failed to login" })
+  } catch (err) {
+    res.status(400).json({ error: err.message })
   }
 })
 

@@ -20,7 +20,7 @@ export default function Home() {
       axios.post('http://localhost:3001/login', { code })
         .then(res => {
           setAccessToken(res.data.accessToken)
-          window.history.pushState({}, null, '/')
+          window.history.pushState({}, '', '/')
         })
         .catch(() => {
           window.location.href = '/'

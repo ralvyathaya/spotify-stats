@@ -1,7 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  images: {
-    domains: ["i.scdn.co"],
+  reactStrictMode: true,
+  env: {
+    NEXT_PUBLIC_SPOTIFY_CLIENT_ID: process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID,
+    NEXT_PUBLIC_SPOTIFY_REDIRECT_URI:
+      process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI,
   },
 }
 

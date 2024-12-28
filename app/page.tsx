@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import Image from 'next/image'
 
-const AUTH_URL = `https://accounts.spotify.com/authorize?client_id=${process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI || '')}&scope=user-read-private%20user-read-email%20user-top-read`
+const AUTH_URL = `https://accounts.spotify.com/authorize?client_id=${process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI || '')}&scope=user-read-private%20user-read-email%20user-top-read&show_dialog=true`
 
 export default function Home() {
   const [accessToken, setAccessToken] = useState('')
@@ -18,7 +18,22 @@ export default function Home() {
 
   useEffect(() => {
     const code = new URLSearchParams(window.location.search).get('code')
+    const error = new URLSearchParams(window.location.search).get('error')
+
+    if (error) {
+      setError(`Authentication error: ${error}`)
+      return
+    }
+
     if (code) {
+      // Prevent code reuse by checking if we've already tried to use this code
+      const usedCode = sessionStorage.getItem('usedCode')
+      if (usedCode === code) {
+        console.log('Code already used, redirecting to login...')
+        window.location.href = '/'
+        return
+      }
+
       setLoading(true)
       setError('')
       console.log('Attempting login with code:', code)
@@ -27,6 +42,7 @@ export default function Home() {
         .then(res => {
           console.log('Login successful:', res.data)
           setAccessToken(res.data.accessToken)
+          sessionStorage.setItem('usedCode', code)
           window.history.pushState({}, '', '/')
         })
         .catch((err) => {
@@ -40,9 +56,8 @@ export default function Home() {
             err.response?.data?.error || 
             'Failed to login. Please try again.'
           )
-          setTimeout(() => {
-            window.location.href = '/'
-          }, 5000)
+          // Clear the code from URL and redirect after error
+          window.location.href = '/'
         })
         .finally(() => setLoading(false))
     }

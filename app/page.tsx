@@ -7,7 +7,18 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import Image from 'next/image'
 
-const AUTH_URL = `https://accounts.spotify.com/authorize?client_id=${process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI || '')}&scope=user-read-private%20user-read-email%20user-top-read&show_dialog=true`
+// Ensure we're using the correct environment variables
+const clientId = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID
+const redirectUri = process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI
+
+if (!clientId || !redirectUri) {
+  console.error('Missing environment variables:', {
+    clientId: !!clientId,
+    redirectUri: !!redirectUri
+  })
+}
+
+const AUTH_URL = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri || '')}&scope=user-read-private%20user-read-email%20user-top-read&show_dialog=true`
 
 export default function Home() {
   const [accessToken, setAccessToken] = useState('')
@@ -18,15 +29,16 @@ export default function Home() {
 
   useEffect(() => {
     const code = new URLSearchParams(window.location.search).get('code')
-    const error = new URLSearchParams(window.location.search).get('error')
+    const authError = new URLSearchParams(window.location.search).get('error')
 
-    if (error) {
-      setError(`Authentication error: ${error}`)
+    if (authError) {
+      console.error('Spotify auth error:', authError)
+      setError(`Authentication error: ${authError}`)
       return
     }
 
     if (code) {
-      // Prevent code reuse by checking if we've already tried to use this code
+      // Prevent code reuse
       const usedCode = sessionStorage.getItem('usedCode')
       if (usedCode === code) {
         console.log('Code already used, redirecting to login...')
@@ -36,28 +48,32 @@ export default function Home() {
 
       setLoading(true)
       setError('')
-      console.log('Attempting login with code:', code)
+      console.log('Attempting login with code')
       
       axios.post('http://localhost:3001/login', { code })
         .then(res => {
-          console.log('Login successful:', res.data)
+          console.log('Login successful')
           setAccessToken(res.data.accessToken)
           sessionStorage.setItem('usedCode', code)
-          window.history.pushState({}, '', '/')
+          // Clear the URL without reloading the page
+          window.history.replaceState({}, '', '/')
         })
         .catch((err) => {
-          console.error('Login error details:', {
-            message: err.message,
+          const errorMessage = err.response?.data?.details || 
+                             err.response?.data?.error || 
+                             err.message || 
+                             'Failed to login'
+          
+          console.error('Login error:', {
+            message: errorMessage,
             response: err.response?.data,
             status: err.response?.status
           })
-          setError(
-            err.response?.data?.details || 
-            err.response?.data?.error || 
-            'Failed to login. Please try again.'
-          )
-          // Clear the code from URL and redirect after error
-          window.location.href = '/'
+          
+          setError(errorMessage)
+          sessionStorage.removeItem('usedCode')
+          // Use replace to avoid adding to browser history
+          window.history.replaceState({}, '', '/')
         })
         .finally(() => setLoading(false))
     }

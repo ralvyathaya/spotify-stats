@@ -9,60 +9,56 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
-const credentials = {
+// Log all incoming requests
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`, req.body)
+  next()
+})
+
+const spotifyApi = new SpotifyWebApi({
   clientId: process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID,
   clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
   redirectUri: process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI,
-}
-
-// Basic route to test server
-app.get("/", (req, res) => {
-  res.json({ message: "Server is running" })
 })
 
 app.post("/login", async (req, res) => {
   const { code } = req.body
 
   if (!code) {
+    console.error("No code provided")
     return res.status(400).json({ error: "Authorization code is required" })
   }
 
-  const spotifyApi = new SpotifyWebApi(credentials)
+  console.log("Login attempt with:", {
+    code: code.slice(0, 10) + "...", // Only log first 10 chars for security
+    clientId: process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID?.slice(0, 5) + "...",
+    redirectUri: process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI,
+  })
 
   try {
     const data = await spotifyApi.authorizationCodeGrant(code)
-    console.log("Authorization successful")
+    console.log("Spotify auth successful, received tokens")
+
+    // Set the access token
+    spotifyApi.setAccessToken(data.body.access_token)
+
     res.json({
       accessToken: data.body.access_token,
       refreshToken: data.body.refresh_token,
       expiresIn: data.body.expires_in,
     })
   } catch (error) {
-    console.error("Authorization error:", {
+    console.error("Spotify auth error:", {
       message: error.message,
-      body: error.body,
       statusCode: error.statusCode,
+      body: error.body,
     })
+
     res.status(error.statusCode || 400).json({
       error: "Authorization failed",
       details: error.message,
       body: error.body,
     })
-  }
-})
-
-app.post("/refresh", async (req, res) => {
-  const { refreshToken } = req.body
-  spotifyApi.setRefreshToken(refreshToken)
-  try {
-    const data = await spotifyApi.refreshAccessToken()
-    res.json({
-      accessToken: data.body.access_token,
-      expiresIn: data.body.expires_in,
-    })
-  } catch (error) {
-    console.error("Refresh error:", error)
-    res.status(400).json({ error: "Failed to refresh token" })
   }
 })
 
@@ -74,12 +70,9 @@ app.get("/recommendations", async (req, res) => {
     return res.status(401).json({ error: "No access token provided" })
   }
 
-  const spotifyApi = new SpotifyWebApi({
-    ...credentials,
-    accessToken,
-  })
-
+  spotifyApi.setAccessToken(accessToken)
   let params = {}
+
   switch (mood) {
     case "happy":
       params = { min_valence: 0.7, min_energy: 0.7, limit: 9 }
@@ -107,11 +100,14 @@ app.get("/recommendations", async (req, res) => {
 })
 
 const PORT = process.env.PORT || 3001
+
+// Verify environment variables before starting
+console.log("Environment check:", {
+  clientId: process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID ? "✓" : "✗",
+  clientSecret: process.env.SPOTIFY_CLIENT_SECRET ? "✓" : "✗",
+  redirectUri: process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI,
+})
+
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`)
-  console.log("Using credentials:", {
-    clientId: credentials.clientId ? "Set" : "Not set",
-    clientSecret: credentials.clientSecret ? "Set" : "Not set",
-    redirectUri: credentials.redirectUri,
-  })
+  console.log(`Server running on http://localhost:${PORT}`)
 })

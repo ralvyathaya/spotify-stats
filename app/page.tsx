@@ -7,48 +7,84 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import Image from 'next/image'
 
-const AUTH_URL = `https://accounts.spotify.com/authorize?client_id=${process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI}&scope=user-read-private%20user-read-email%20user-top-read`
+const AUTH_URL = `https://accounts.spotify.com/authorize?client_id=${process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI || '')}&scope=user-read-private%20user-read-email%20user-top-read`
 
 export default function Home() {
   const [accessToken, setAccessToken] = useState('')
   const [mood, setMood] = useState('')
   const [tracks, setTracks] = useState([])
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     const code = new URLSearchParams(window.location.search).get('code')
     if (code) {
+      setLoading(true)
+      setError('')
+      console.log('Attempting login with code:', code)
+      
       axios.post('http://localhost:3001/login', { code })
         .then(res => {
+          console.log('Login successful:', res.data)
           setAccessToken(res.data.accessToken)
           window.history.pushState({}, '', '/')
         })
-        .catch(() => {
-          window.location.href = '/'
+        .catch((err) => {
+          console.error('Login error details:', {
+            message: err.message,
+            response: err.response?.data,
+            status: err.response?.status
+          })
+          setError(
+            err.response?.data?.details || 
+            err.response?.data?.error || 
+            'Failed to login. Please try again.'
+          )
+          setTimeout(() => {
+            window.location.href = '/'
+          }, 5000)
         })
+        .finally(() => setLoading(false))
     }
   }, [])
 
   useEffect(() => {
     if (!accessToken || !mood) return
+    setLoading(true)
+    setError('')
+    
     axios.get(`http://localhost:3001/recommendations?mood=${mood}`, {
       headers: { 'Authorization': `Bearer ${accessToken}` }
     })
       .then(res => {
         setTracks(res.data)
       })
-      .catch(err => console.error(err))
+      .catch(err => {
+        setError(err.response?.data?.error || 'Failed to get recommendations')
+        console.error(err)
+      })
+      .finally(() => setLoading(false))
   }, [accessToken, mood])
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-4">
+        <div className="text-red-500 mb-4">{error}</div>
+        <Button onClick={() => window.location.href = '/'}>Try Again</Button>
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-3xl font-bold mb-4">Mood Tunes</h1>
       {!accessToken ? (
-        <Button asChild>
-          <a href={AUTH_URL}>Login with Spotify</a>
+        <Button asChild disabled={loading}>
+          <a href={AUTH_URL}>{loading ? 'Loading...' : 'Login with Spotify'}</a>
         </Button>
       ) : (
         <>
-          <Select onValueChange={setMood}>
+          <Select onValueChange={setMood} disabled={loading}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select your mood" />
             </SelectTrigger>
@@ -58,6 +94,9 @@ export default function Home() {
               <SelectItem value="energetic">Energetic</SelectItem>
             </SelectContent>
           </Select>
+          
+          {loading && <div className="mt-4">Loading songs...</div>}
+          
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
             {tracks.map((track: any) => (
               <Card key={track.id}>

@@ -9,16 +9,15 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
-// Log all incoming requests
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`, req.body)
-  next()
-})
-
 const spotifyApi = new SpotifyWebApi({
   clientId: process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID,
   clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
   redirectUri: process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI,
+})
+
+// Basic health check route
+app.get("/", (req, res) => {
+  res.json({ status: "Server is running" })
 })
 
 app.post("/login", async (req, res) => {
@@ -29,31 +28,20 @@ app.post("/login", async (req, res) => {
     return res.status(400).json({ error: "Authorization code is required" })
   }
 
-  console.log("Login attempt with:", {
-    code: code.slice(0, 10) + "...", // Only log first 10 chars for security
-    clientId: process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID?.slice(0, 5) + "...",
-    redirectUri: process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI,
-  })
-
   try {
     const data = await spotifyApi.authorizationCodeGrant(code)
-    console.log("Spotify auth successful, received tokens")
-
-    // Set the access token
-    spotifyApi.setAccessToken(data.body.access_token)
-
+    console.log("Auth successful, token expires in", data.body.expires_in)
     res.json({
       accessToken: data.body.access_token,
       refreshToken: data.body.refresh_token,
       expiresIn: data.body.expires_in,
     })
   } catch (error) {
-    console.error("Spotify auth error:", {
+    console.error("Auth Error:", {
       message: error.message,
       statusCode: error.statusCode,
       body: error.body,
     })
-
     res.status(error.statusCode || 400).json({
       error: "Authorization failed",
       details: error.message,
@@ -92,20 +80,20 @@ app.get("/recommendations", async (req, res) => {
     res.json(data.body.tracks)
   } catch (error) {
     console.error("Recommendations error:", error)
-    res.status(error.statusCode || 400).json({
-      error: "Failed to get recommendations",
-      details: error.message,
-    })
+    res
+      .status(error.statusCode || 400)
+      .json({ error: "Failed to get recommendations" })
   }
 })
 
 const PORT = process.env.PORT || 3001
 
 // Verify environment variables before starting
-console.log("Environment check:", {
+console.log("Starting server with config:", {
   clientId: process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID ? "✓" : "✗",
   clientSecret: process.env.SPOTIFY_CLIENT_SECRET ? "✓" : "✗",
   redirectUri: process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI,
+  port: PORT,
 })
 
 app.listen(PORT, () => {

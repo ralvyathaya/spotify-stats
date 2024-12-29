@@ -7,18 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import Image from 'next/image'
 
-// Ensure we're using the correct environment variables
-const clientId = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID
-const redirectUri = process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI
-
-if (!clientId || !redirectUri) {
-  console.error('Missing environment variables:', {
-    clientId: !!clientId,
-    redirectUri: !!redirectUri
-  })
-}
-
-const AUTH_URL = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri || '')}&scope=user-read-private%20user-read-email%20user-top-read&show_dialog=true`
+const AUTH_URL = `https://accounts.spotify.com/authorize?client_id=${process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI || '')}&scope=user-read-private%20user-read-email%20user-top-read&show_dialog=true`
 
 export default function Home() {
   const [accessToken, setAccessToken] = useState('')
@@ -32,48 +21,29 @@ export default function Home() {
     const authError = new URLSearchParams(window.location.search).get('error')
 
     if (authError) {
-      console.error('Spotify auth error:', authError)
       setError(`Authentication error: ${authError}`)
       return
     }
 
     if (code) {
-      // Prevent code reuse
-      const usedCode = sessionStorage.getItem('usedCode')
-      if (usedCode === code) {
-        console.log('Code already used, redirecting to login...')
-        window.location.href = '/'
-        return
-      }
-
       setLoading(true)
       setError('')
-      console.log('Attempting login with code')
       
       axios.post('http://localhost:3001/login', { code })
         .then(res => {
-          console.log('Login successful')
           setAccessToken(res.data.accessToken)
-          sessionStorage.setItem('usedCode', code)
-          // Clear the URL without reloading the page
           window.history.replaceState({}, '', '/')
         })
         .catch((err) => {
-          const errorMessage = err.response?.data?.details || 
+          const errorDetails = err.response?.data?.details || 
                              err.response?.data?.error || 
                              err.message || 
-                             'Failed to login'
-          
-          console.error('Login error:', {
-            message: errorMessage,
-            response: err.response?.data,
-            status: err.response?.status
+                             'Unknown error occurred'
+          console.error('Login failed:', {
+            error: errorDetails,
+            response: err.response?.data
           })
-          
-          setError(errorMessage)
-          sessionStorage.removeItem('usedCode')
-          // Use replace to avoid adding to browser history
-          window.history.replaceState({}, '', '/')
+          setError(`Login failed: ${errorDetails}`)
         })
         .finally(() => setLoading(false))
     }
@@ -92,7 +62,7 @@ export default function Home() {
       })
       .catch(err => {
         setError(err.response?.data?.error || 'Failed to get recommendations')
-        console.error(err)
+        console.error('Recommendations error:', err.response?.data)
       })
       .finally(() => setLoading(false))
   }, [accessToken, mood])

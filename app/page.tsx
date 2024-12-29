@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import Image from 'next/image'
 
-const AUTH_URL = `https://accounts.spotify.com/authorize?client_id=${process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI || '')}&scope=user-read-private%20user-read-email%20user-top-read&show_dialog=true&state=${Math.random().toString(36).substring(7)}`
+const AUTH_URL = `https://accounts.spotify.com/authorize?client_id=${process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI || '')}&scope=user-read-private%20user-read-email%20user-top-read&show_dialog=true`
 
 export default function Home() {
   const [accessToken, setAccessToken] = useState('')
@@ -15,48 +15,21 @@ export default function Home() {
   const [tracks, setTracks] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [isProcessingAuth, setIsProcessingAuth] = useState(false)
-
-  const handleAuth = useCallback(async (code: string) => {
-    if (isProcessingAuth) return
-    setIsProcessingAuth(true)
-    setLoading(true)
-    setError('')
-
-    try {
-      const response = await axios.post('http://localhost:3001/login', { code })
-      setAccessToken(response.data.accessToken)
-      window.history.replaceState({}, '', '/')
-    } catch (err: any) {
-      const errorDetails = err.response?.data?.details || 
-                         err.response?.data?.error || 
-                         err.message || 
-                         'Unknown error occurred'
-      console.error('Login failed:', {
-        error: errorDetails,
-        response: err.response?.data
-      })
-      setError(`Login failed: ${errorDetails}`)
-    } finally {
-      setLoading(false)
-      setIsProcessingAuth(false)
-    }
-  }, [isProcessingAuth])
 
   useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get('code')
-    const authError = new URLSearchParams(window.location.search).get('error')
-    const state = new URLSearchParams(window.location.search).get('state')
+    // Check for access token in URL
+    const urlParams = new URLSearchParams(window.location.search)
+    const token = urlParams.get('access_token')
+    const urlError = urlParams.get('error')
 
-    if (authError) {
-      setError(`Authentication error: ${authError}`)
-      return
+    if (token) {
+      setAccessToken(token)
+      // Clean URL
+      window.history.replaceState({}, '', '/')
+    } else if (urlError) {
+      setError(urlError)
     }
-
-    if (code && !accessToken && !isProcessingAuth) {
-      handleAuth(code)
-    }
-  }, [handleAuth, accessToken, isProcessingAuth])
+  }, [])
 
   useEffect(() => {
     if (!accessToken || !mood) return
@@ -76,6 +49,13 @@ export default function Home() {
       .finally(() => setLoading(false))
   }, [accessToken, mood])
 
+  const handleLogout = () => {
+    setAccessToken('')
+    setMood('')
+    setTracks([])
+    window.location.href = '/'
+  }
+
   if (error) {
     return (
       <div className="container mx-auto p-4">
@@ -87,7 +67,15 @@ export default function Home() {
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-4">Mood Tunes</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-3xl font-bold">Mood Tunes</h1>
+        {accessToken && (
+          <Button variant="outline" onClick={handleLogout}>
+            Logout
+          </Button>
+        )}
+      </div>
+
       {!accessToken ? (
         <Button asChild disabled={loading}>
           <a href={AUTH_URL}>{loading ? 'Loading...' : 'Login with Spotify'}</a>

@@ -7,7 +7,7 @@ export async function GET(request) {
   const code = searchParams.get("code")
 
   if (!code) {
-    return NextResponse.redirect(new URL("/error", request.url))
+    return NextResponse.redirect(new URL("/", request.url))
   }
 
   try {
@@ -34,28 +34,14 @@ export async function GET(request) {
 
     const { access_token, refresh_token } = response.data
 
-    // Create response with redirect
-    const redirectUrl = new URL("/dashboard", request.url)
-    const res = NextResponse.redirect(redirectUrl)
-
-    // Set cookies in the response
-    res.cookies.set("spotify_access_token", access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-    })
-
-    res.cookies.set("spotify_refresh_token", refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-    })
-
-    return res
+    // Redirect to home page with access token in URL
+    const redirectUrl = new URL("/", request.url)
+    redirectUrl.searchParams.set("access_token", access_token)
+    return NextResponse.redirect(redirectUrl)
   } catch (error) {
     console.error("Auth Error:", error.response?.data || error.message)
-    return NextResponse.redirect(new URL("/error", request.url))
+    const errorUrl = new URL("/", request.url)
+    errorUrl.searchParams.set("error", "Authentication failed")
+    return NextResponse.redirect(errorUrl)
   }
 }

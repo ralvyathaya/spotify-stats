@@ -10,19 +10,17 @@ app.use(cors())
 app.use(express.json())
 
 const spotifyApi = new SpotifyWebApi({
-  clientId: process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID,
+  clientId: process.env.SPOTIFY_CLIENT_ID,
   clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
-  redirectUri: process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI,
+  redirectUri: process.env.SPOTIFY_REDIRECT_URI,
 })
 
-// Basic health check route
 app.get("/", (req, res) => {
   res.json({ status: "Server is running" })
 })
 
 app.post("/login", async (req, res) => {
   const { code } = req.body
-
   if (!code) {
     console.error("No code provided")
     return res.status(400).json({ error: "Authorization code is required" })
@@ -59,8 +57,8 @@ app.get("/recommendations", async (req, res) => {
   }
 
   spotifyApi.setAccessToken(accessToken)
-  let params = {}
 
+  let params = {}
   switch (mood) {
     case "happy":
       params = { min_valence: 0.7, min_energy: 0.7, limit: 9 }
@@ -88,11 +86,10 @@ app.get("/recommendations", async (req, res) => {
 
 const PORT = process.env.PORT || 3001
 
-// Verify environment variables before starting
 console.log("Starting server with config:", {
-  clientId: process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID ? "✓" : "✗",
+  clientId: process.env.SPOTIFY_CLIENT_ID ? "✓" : "✗",
   clientSecret: process.env.SPOTIFY_CLIENT_SECRET ? "✓" : "✗",
-  redirectUri: process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI,
+  redirectUri: process.env.SPOTIFY_REDIRECT_URI,
   port: PORT,
 })
 

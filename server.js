@@ -9,10 +9,25 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
+// Verify environment variables
+const requiredEnvVars = {
+  NEXT_PUBLIC_SPOTIFY_CLIENT_ID: process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID,
+  SPOTIFY_CLIENT_SECRET: process.env.SPOTIFY_CLIENT_SECRET,
+  NEXT_PUBLIC_SPOTIFY_REDIRECT_URI:
+    process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI,
+}
+
+Object.entries(requiredEnvVars).forEach(([key, value]) => {
+  if (!value) {
+    console.error(`Missing required environment variable: ${key}`)
+    process.exit(1)
+  }
+})
+
 const spotifyApi = new SpotifyWebApi({
-  clientId: process.env.SPOTIFY_CLIENT_ID,
+  clientId: process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID,
   clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
-  redirectUri: process.env.SPOTIFY_REDIRECT_URI,
+  redirectUri: process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI,
 })
 
 app.get("/", (req, res) => {
@@ -21,25 +36,35 @@ app.get("/", (req, res) => {
 
 app.post("/login", async (req, res) => {
   const { code } = req.body
+
   if (!code) {
-    console.error("No code provided")
     return res.status(400).json({ error: "Authorization code is required" })
   }
 
   try {
     const data = await spotifyApi.authorizationCodeGrant(code)
-    console.log("Auth successful, token expires in", data.body.expires_in)
+
+    // Set the access token on success
+    const accessToken = data.body.access_token
+    spotifyApi.setAccessToken(accessToken)
+
+    // Return the tokens
     res.json({
-      accessToken: data.body.access_token,
+      accessToken: accessToken,
       refreshToken: data.body.refresh_token,
       expiresIn: data.body.expires_in,
     })
   } catch (error) {
-    console.error("Auth Error:", {
+    console.error("Authorization error:", {
       message: error.message,
       statusCode: error.statusCode,
       body: error.body,
     })
+
+    // Clear any existing tokens on error
+    spotifyApi.resetAccessToken()
+    spotifyApi.resetRefreshToken()
+
     res.status(error.statusCode || 400).json({
       error: "Authorization failed",
       details: error.message,
@@ -57,8 +82,8 @@ app.get("/recommendations", async (req, res) => {
   }
 
   spotifyApi.setAccessToken(accessToken)
-
   let params = {}
+
   switch (mood) {
     case "happy":
       params = { min_valence: 0.7, min_energy: 0.7, limit: 9 }
@@ -87,9 +112,9 @@ app.get("/recommendations", async (req, res) => {
 const PORT = process.env.PORT || 3001
 
 console.log("Starting server with config:", {
-  clientId: process.env.SPOTIFY_CLIENT_ID ? "✓" : "✗",
+  clientId: process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID ? "✓" : "✗",
   clientSecret: process.env.SPOTIFY_CLIENT_SECRET ? "✓" : "✗",
-  redirectUri: process.env.SPOTIFY_REDIRECT_URI,
+  redirectUri: process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI,
   port: PORT,
 })
 

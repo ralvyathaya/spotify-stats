@@ -1,14 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import Image from 'next/image'
 
-const REDIRECT_URI = 'http://localhost:3000'
-const AUTH_URL = `https://accounts.spotify.com/authorize?client_id=${process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=user-read-private%20user-read-email%20user-top-read&show_dialog=true`
+const AUTH_URL = `https://accounts.spotify.com/authorize?client_id=${process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI || '')}&scope=user-read-private%20user-read-email%20user-top-read&show_dialog=true&state=${Math.random().toString(36).substring(7)}`
 
 export default function Home() {
   const [accessToken, setAccessToken] = useState('')
@@ -16,39 +15,48 @@ export default function Home() {
   const [tracks, setTracks] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [isProcessingAuth, setIsProcessingAuth] = useState(false)
+
+  const handleAuth = useCallback(async (code: string) => {
+    if (isProcessingAuth) return
+    setIsProcessingAuth(true)
+    setLoading(true)
+    setError('')
+
+    try {
+      const response = await axios.post('http://localhost:3001/login', { code })
+      setAccessToken(response.data.accessToken)
+      window.history.replaceState({}, '', '/')
+    } catch (err: any) {
+      const errorDetails = err.response?.data?.details || 
+                         err.response?.data?.error || 
+                         err.message || 
+                         'Unknown error occurred'
+      console.error('Login failed:', {
+        error: errorDetails,
+        response: err.response?.data
+      })
+      setError(`Login failed: ${errorDetails}`)
+    } finally {
+      setLoading(false)
+      setIsProcessingAuth(false)
+    }
+  }, [isProcessingAuth])
 
   useEffect(() => {
     const code = new URLSearchParams(window.location.search).get('code')
     const authError = new URLSearchParams(window.location.search).get('error')
+    const state = new URLSearchParams(window.location.search).get('state')
 
     if (authError) {
       setError(`Authentication error: ${authError}`)
       return
     }
 
-    if (code) {
-      setLoading(true)
-      setError('')
-      
-      axios.post('http://localhost:3001/login', { code })
-        .then(res => {
-          setAccessToken(res.data.accessToken)
-          window.history.replaceState({}, '', '/')
-        })
-        .catch((err) => {
-          const errorDetails = err.response?.data?.details || 
-                             err.response?.data?.error || 
-                             err.message || 
-                             'Unknown error occurred'
-          console.error('Login failed:', {
-            error: errorDetails,
-            response: err.response?.data
-          })
-          setError(`Login failed: ${errorDetails}`)
-        })
-        .finally(() => setLoading(false))
+    if (code && !accessToken && !isProcessingAuth) {
+      handleAuth(code)
     }
-  }, [])
+  }, [handleAuth, accessToken, isProcessingAuth])
 
   useEffect(() => {
     if (!accessToken || !mood) return

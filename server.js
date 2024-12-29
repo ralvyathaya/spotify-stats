@@ -82,30 +82,57 @@ app.get("/recommendations", async (req, res) => {
   }
 
   spotifyApi.setAccessToken(accessToken)
-  let params = {}
+  let params = {
+    seed_genres: ["pop"], // Default seed genre
+    limit: 9,
+  }
 
   switch (mood) {
     case "happy":
-      params = { min_valence: 0.7, min_energy: 0.7, limit: 9 }
+      params = {
+        ...params,
+        seed_genres: ["pop", "happy"],
+        min_valence: 0.7,
+        min_energy: 0.7,
+        target_valence: 0.8,
+      }
       break
     case "sad":
-      params = { max_valence: 0.3, max_energy: 0.3, limit: 9 }
+      params = {
+        ...params,
+        seed_genres: ["acoustic", "sad"],
+        max_valence: 0.3,
+        max_energy: 0.3,
+        target_valence: 0.2,
+      }
       break
     case "energetic":
-      params = { min_energy: 0.8, min_danceability: 0.7, limit: 9 }
+      params = {
+        ...params,
+        seed_genres: ["dance", "electronic"],
+        min_energy: 0.8,
+        min_danceability: 0.7,
+        target_energy: 0.9,
+      }
       break
     default:
       return res.status(400).json({ error: "Invalid mood" })
   }
 
   try {
+    console.log("Requesting recommendations with params:", params)
     const data = await spotifyApi.getRecommendations(params)
     res.json(data.body.tracks)
   } catch (error) {
-    console.error("Recommendations error:", error)
-    res
-      .status(error.statusCode || 400)
-      .json({ error: "Failed to get recommendations" })
+    console.error("Recommendations error:", {
+      message: error.message,
+      statusCode: error.statusCode,
+      body: error.body,
+    })
+    res.status(error.statusCode || 400).json({
+      error: "Failed to get recommendations",
+      details: error.message,
+    })
   }
 })
 

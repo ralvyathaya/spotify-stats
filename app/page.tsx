@@ -7,51 +7,90 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import Image from 'next/image'
 
+// Define interfaces for type safety
+interface Mood {
+  id: string
+  name: string
+}
+
+interface Track {
+  id: string
+  name: string
+  artists: Array<{ name: string }>
+  album: {
+    images: Array<{ url: string }>
+  }
+  external_urls: {
+    spotify: string
+  }
+}
+
 const AUTH_URL = `https://accounts.spotify.com/authorize?client_id=${process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI || '')}&scope=user-read-private%20user-read-email%20user-top-read%20user-library-read&show_dialog=true`
 
 export default function Home() {
   const [accessToken, setAccessToken] = useState('')
   const [mood, setMood] = useState('')
-  const [tracks, setTracks] = useState([])
+  const [tracks, setTracks] = useState<Track[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [availableMoods, setAvailableMoods] = useState<Mood[]>([])
 
   useEffect(() => {
-    // Check for access token in URL
     const urlParams = new URLSearchParams(window.location.search)
     const token = urlParams.get('access_token')
     const urlError = urlParams.get('error')
 
     if (token) {
-      console.log('Token received')
       setAccessToken(token)
-      // Clean URL
       window.history.replaceState({}, '', '/')
     } else if (urlError) {
-      console.error('Auth error:', urlError)
       setError(urlError)
     }
   }, [])
+
+  useEffect(() => {
+    if (!accessToken) return
+    setLoading(true)
+    
+    axios.get('http://localhost:3001/available-moods', {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    })
+      .then(res => {
+        if (Array.isArray(res.data)) {
+          setAvailableMoods(res.data)
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching moods:', err)
+        if (err.response?.status === 401) {
+          handleLogout()
+        } else {
+          setError('Failed to load moods')
+        }
+      })
+      .finally(() => setLoading(false))
+  }, [accessToken])
 
   useEffect(() => {
     if (!accessToken || !mood) return
     setLoading(true)
     setError('')
     
-    console.log('Fetching recommendations for mood:', mood)
     axios.get(`http://localhost:3001/recommendations?mood=${mood}`, {
       headers: { 'Authorization': `Bearer ${accessToken}` }
     })
       .then(res => {
-        console.log('Recommendations received:', res.data.length)
-        setTracks(res.data)
+        if (Array.isArray(res.data)) {
+          setTracks(res.data)
+        }
       })
       .catch(err => {
-        const errorMessage = err.response?.data?.details || 
-                           err.response?.data?.error || 
-                           'Failed to get recommendations'
-        console.error('Recommendations error:', errorMessage)
-        setError(errorMessage)
+        console.error('Error fetching recommendations:', err)
+        if (err.response?.status === 401) {
+          handleLogout()
+        } else {
+          setError('Failed to get recommendations')
+        }
       })
       .finally(() => setLoading(false))
   }, [accessToken, mood])
@@ -60,6 +99,7 @@ export default function Home() {
     setAccessToken('')
     setMood('')
     setTracks([])
+    setAvailableMoods([])
     window.location.href = '/'
   }
 
@@ -94,14 +134,16 @@ export default function Home() {
         <>
           <div className="mb-6">
             <h2 className="text-xl mb-2">How are you feeling today?</h2>
-            <Select onValueChange={setMood} disabled={loading}>
+            <Select onValueChange={setMood} disabled={loading || availableMoods.length === 0}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select your mood" />
+                <SelectValue placeholder={availableMoods.length === 0 ? "Loading moods..." : "Select your mood"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="happy">Happy</SelectItem>
-                <SelectItem value="sad">Sad</SelectItem>
-                <SelectItem value="energetic">Energetic</SelectItem>
+                {availableMoods.map((mood: Mood) => (
+                  <SelectItem key={mood.id} value={mood.id}>
+                    {mood.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -109,7 +151,7 @@ export default function Home() {
           {loading && <div className="text-center mt-4">Finding the perfect songs for your mood...</div>}
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-            {tracks.map((track: any) => (
+            {tracks.map((track: Track) => (
               <Card key={track.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <CardTitle className="truncate">{track.name}</CardTitle>

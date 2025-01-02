@@ -6,17 +6,17 @@ import dotenv from "dotenv"
 dotenv.config()
 
 const app = express()
-app.use(cors())
-app.use(express.json())
 
-// Add CSP headers
-app.use((req, res, next) => {
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:3001"
-  )
-  next()
-})
+// Configure CORS
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL,
+    methods: ["GET", "POST"],
+    credentials: true,
+  })
+)
+
+app.use(express.json())
 
 const spotifyApi = new SpotifyWebApi({
   clientId: process.env.SPOTIFY_CLIENT_ID,
@@ -30,49 +30,54 @@ app.get("/", (req, res) => {
 })
 
 app.get("/login", (req, res) => {
-  const scopes = ["user-read-private", "user-read-email", "user-top-read"]
-  const authorizeURL = spotifyApi.createAuthorizeURL(scopes)
+  const scopes = [
+    "user-read-private",
+    "user-read-email",
+    "user-top-read",
+    "streaming",
+    "user-library-read",
+  ]
+  const state = Math.random().toString(36).substring(7)
+  const authorizeURL = spotifyApi.createAuthorizeURL(scopes, state)
   res.json({ url: authorizeURL })
 })
 
-// Handle both GET and POST for callback
-app.get("/callback", async (req, res) => {
-  const { code } = req.query
-  try {
-    const data = await spotifyApi.authorizationCodeGrant(code)
-    const { access_token, refresh_token } = data.body
-    spotifyApi.setAccessToken(access_token)
-    spotifyApi.setRefreshToken(refresh_token)
-
-    // Redirect to frontend with tokens
-    res.redirect(
-      `${process.env.CLIENT_URL}?access_token=${access_token}&refresh_token=${refresh_token}`
-    )
-  } catch (error) {
-    res.redirect(`${process.env.CLIENT_URL}?error=authentication_failed`)
-  }
-})
-
+// Handle callback from Spotify
 app.post("/callback", async (req, res) => {
   const { code } = req.body
+  if (!code) {
+    return res.status(400).json({ error: "No code provided" })
+  }
+
   try {
     const data = await spotifyApi.authorizationCodeGrant(code)
     const { access_token, refresh_token } = data.body
-    spotifyApi.setAccessToken(access_token)
-    spotifyApi.setRefreshToken(refresh_token)
     res.json({ access_token, refresh_token })
   } catch (error) {
-    res.status(400).json({ error: "Error during authentication" })
+    console.error("Auth Error:", error)
+    res.status(400).json({ error: "Authentication failed" })
   }
 })
 
 app.get("/recommendations", async (req, res) => {
   const { mood } = req.query
+  const authHeader = req.headers.authorization
+
+  if (!authHeader) {
+    return res.status(401).json({ error: "No authorization token provided" })
+  }
+
+  const token = authHeader.split(" ")[1]
+  spotifyApi.setAccessToken(token)
+
   try {
     const recommendations = await getRecommendations(mood)
     res.json(recommendations)
   } catch (error) {
-    res.status(400).json({ error: "Error fetching recommendations" })
+    console.error("Recommendations Error:", error)
+    res
+      .status(error.statusCode || 400)
+      .json({ error: "Error fetching recommendations" })
   }
 })
 
@@ -86,19 +91,28 @@ async function getRecommendations(mood) {
   }
 
   const features = moodToFeatures[mood] || {}
-  const { tracks } = await spotifyApi.getRecommendations({
-    limit: 10,
-    seed_genres: [mood],
-    ...features,
-  })
 
-  return tracks.map((track) => ({
-    id: track.id,
-    name: track.name,
-    artist: track.artists[0].name,
-    album: track.album.name,
-    preview_url: track.preview_url,
-  }))
+  try {
+    const {
+      body: { tracks },
+    } = await spotifyApi.getRecommendations({
+      limit: 10,
+      seed_genres: [mood],
+      ...features,
+    })
+
+    return tracks.map((track) => ({
+      id: track.id,
+      name: track.name,
+      artist: track.artists[0].name,
+      album: track.album.name,
+      preview_url: track.preview_url,
+      image: track.album.images[0]?.url,
+    }))
+  } catch (error) {
+    console.error("Spotify API Error:", error)
+    throw error
+  }
 }
 
 const PORT = process.env.PORT || 3001

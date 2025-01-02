@@ -1,3 +1,4 @@
+// App.jsx
 import React, { useState, useEffect } from 'react';
 import SpotifyLogin from './components/SpotifyLogin';
 import MoodSelector from './components/MoodSelector';
@@ -9,9 +10,19 @@ function App() {
   const [songs, setSongs] = useState([]);
 
   useEffect(() => {
-    const token = localStorage.getItem('spotify_access_token');
+    // Check URL parameters for tokens
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('access_token');
+    
     if (token) {
-      setAccessToken(token);
+      handleLogin(token);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+      const storedToken = localStorage.getItem('spotify_access_token');
+      if (storedToken) {
+        setAccessToken(storedToken);
+      }
     }
   }, []);
 
@@ -32,19 +43,24 @@ function App() {
   };
 
   return (
-    <div className="App">
-      <h1>Spotify Mood Player</h1>
-      {!accessToken ? (
-        <SpotifyLogin onLogin={handleLogin} />
-      ) : (
-        <>
-          <MoodSelector onMoodSelect={handleMoodSelect} />
-          {mood && <SongList songs={songs} />}
-        </>
-      )}
+    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-4xl md:text-5xl font-press-start text-center mb-12 text-retro-purple neon-glow">
+          Mood Tunes
+        </h1>
+        <div className="flex flex-col items-center">
+          {!accessToken ? (
+            <SpotifyLogin onLogin={handleLogin} />
+          ) : (
+            <>
+              <MoodSelector onMoodSelect={handleMoodSelect} />
+              {mood && <SongList songs={songs} />}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
 export default App;
-

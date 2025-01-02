@@ -1,0 +1,25 @@
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-retro-black text-white min-h-screen;
+  background-image: linear-gradient(
+      to bottom,
+      rgba(183, 103, 255, 0.1) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to right, rgba(183, 103, 255, 0.1) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+.neon-glow {
+  text-shadow: 0 0 5px #ff71ce, 0 0 15px #ff71ce, 0 0 20px #ff71ce;
+}
+
+.card-hover {
+  @apply transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-retro-purple/20;
+}

@@ -1,30 +1,33 @@
 // MoodSelector.jsx
 import React from 'react';
 
-function MoodSelector({ onMoodSelect }) {
-  const moods = ['happy', 'sad', 'energetic', 'relaxed', 'angry'];
-  const moodEmojis = {
-    happy: '😊',
-    sad: '😢',
-    energetic: '⚡',
-    relaxed: '😌',
-    angry: '😠'
-  };
+const moods = [
+  { name: 'happy', emoji: '😊', label: 'Happy' },
+  { name: 'sad', emoji: '😢', label: 'Sad' },
+  { name: 'energetic', emoji: '⚡', label: 'Energetic' },
+  { name: 'relaxed', emoji: '😌', label: 'Relaxed' },
+  { name: 'angry', emoji: '😠', label: 'Angry' },
+];
 
+function MoodSelector({ onMoodSelect }) {
   return (
-    <div className="my-8">
-      <h2 className="text-3xl font-press-start mb-6 text-retro-purple neon-glow">How are you feeling?</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {moods.map(mood => (
+    <div className="w-full max-w-2xl">
+      <h2 className="text-2xl font-retro text-retro-cyan mb-8 text-center">
+        How are you feeling today?
+      </h2>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {moods.map(({ name, emoji, label }) => (
           <button
-            key={mood}
-            onClick={() => onMoodSelect(mood)}
-            className="bg-retro-black border-2 border-retro-purple p-4 rounded-lg 
-            hover:bg-retro-purple/20 transition-all duration-300 card-hover
-            font-press-start text-sm uppercase"
+            key={name}
+            onClick={() => onMoodSelect(name)}
+            className="bg-retro-black border-2 border-retro-purple p-6 rounded-lg 
+            hover:bg-retro-purple/10 transition-all duration-300 card-hover
+            flex flex-col items-center gap-3"
           >
-            <span className="block text-2xl mb-2">{moodEmojis[mood]}</span>
-            {mood}
+            <span className="text-4xl" role="img" aria-label={name}>
+              {emoji}
+            </span>
+            <span className="font-retro text-sm text-retro-cyan">{label}</span>
           </button>
         ))}
       </div>

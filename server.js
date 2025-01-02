@@ -36,26 +36,36 @@ app.get("/login", (req, res) => {
     "user-top-read",
     "streaming",
     "user-library-read",
+    "user-read-playback-state",
   ]
   const state = Math.random().toString(36).substring(7)
   const authorizeURL = spotifyApi.createAuthorizeURL(scopes, state)
   res.json({ url: authorizeURL })
 })
 
-// Handle callback from Spotify
-app.post("/callback", async (req, res) => {
-  const { code } = req.body
-  if (!code) {
-    return res.status(400).json({ error: "No code provided" })
+app.get("/callback", async (req, res) => {
+  const { code, error } = req.query
+
+  if (error) {
+    console.error("Spotify Auth Error:", error)
+    return res.redirect(`${process.env.CLIENT_URL}?error=spotify_auth_error`)
   }
 
   try {
     const data = await spotifyApi.authorizationCodeGrant(code)
     const { access_token, refresh_token } = data.body
-    res.json({ access_token, refresh_token })
+
+    // Store tokens in the API instance
+    spotifyApi.setAccessToken(access_token)
+    spotifyApi.setRefreshToken(refresh_token)
+
+    // Redirect to frontend with tokens
+    res.redirect(
+      `${process.env.CLIENT_URL}?access_token=${access_token}&refresh_token=${refresh_token}`
+    )
   } catch (error) {
     console.error("Auth Error:", error)
-    res.status(400).json({ error: "Authentication failed" })
+    res.redirect(`${process.env.CLIENT_URL}?error=authentication_failed`)
   }
 })
 
@@ -75,6 +85,9 @@ app.get("/recommendations", async (req, res) => {
     res.json(recommendations)
   } catch (error) {
     console.error("Recommendations Error:", error)
+    if (error.statusCode === 401) {
+      return res.status(401).json({ error: "Token expired" })
+    }
     res
       .status(error.statusCode || 400)
       .json({ error: "Error fetching recommendations" })
@@ -83,21 +96,42 @@ app.get("/recommendations", async (req, res) => {
 
 async function getRecommendations(mood) {
   const moodToFeatures = {
-    happy: { min_valence: 0.7, target_energy: 0.8 },
-    sad: { max_valence: 0.3, target_energy: 0.3 },
-    energetic: { min_energy: 0.8, target_tempo: 150 },
-    relaxed: { max_energy: 0.4, target_instrumentalness: 0.5 },
-    angry: { target_energy: 0.8, target_valence: 0.2 },
+    happy: {
+      min_valence: 0.7,
+      target_energy: 0.8,
+      seed_genres: ["happy", "pop", "dance"],
+    },
+    sad: {
+      max_valence: 0.3,
+      target_energy: 0.3,
+      seed_genres: ["sad", "acoustic", "piano"],
+    },
+    energetic: {
+      min_energy: 0.8,
+      target_tempo: 150,
+      seed_genres: ["dance", "electronic", "edm"],
+    },
+    relaxed: {
+      max_energy: 0.4,
+      target_instrumentalness: 0.5,
+      seed_genres: ["ambient", "chill", "sleep"],
+    },
+    angry: {
+      target_energy: 0.8,
+      target_valence: 0.2,
+      seed_genres: ["metal", "rock", "punk"],
+    },
   }
 
-  const features = moodToFeatures[mood] || {}
+  const moodConfig = moodToFeatures[mood] || {}
+  const { seed_genres, ...features } = moodConfig
 
   try {
     const {
       body: { tracks },
     } = await spotifyApi.getRecommendations({
       limit: 10,
-      seed_genres: [mood],
+      seed_genres: seed_genres || [mood],
       ...features,
     })
 
@@ -108,6 +142,7 @@ async function getRecommendations(mood) {
       album: track.album.name,
       preview_url: track.preview_url,
       image: track.album.images[0]?.url,
+      external_url: track.external_urls.spotify,
     }))
   } catch (error) {
     console.error("Spotify API Error:", error)

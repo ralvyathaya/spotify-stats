@@ -5,7 +5,7 @@ function SpotifyLogin({ onLogin }) {
   useEffect(() => {
     // Check if we're being redirected from Spotify
     const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
+    const token = urlParams.get('access_token');
     const error = urlParams.get('error');
 
     if (error) {
@@ -13,35 +13,12 @@ function SpotifyLogin({ onLogin }) {
       return;
     }
 
-    if (code) {
-      // Exchange code for token
-      exchangeCodeForToken(code);
-    }
-  }, []);
-
-  const exchangeCodeForToken = async (code) => {
-    try {
-      const response = await fetch('/api/auth/callback', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ code }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to exchange code for token');
-      }
-
-      const data = await response.json();
-      onLogin(data.access_token);
-      
+    if (token) {
+      onLogin(token);
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
-    } catch (error) {
-      console.error('Error exchanging code for token:', error);
     }
-  };
+  }, [onLogin]);
 
   const handleLogin = async () => {
     try {

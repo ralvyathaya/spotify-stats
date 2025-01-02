@@ -1,3 +1,4 @@
+// SpotifyLogin.jsx
 import React from 'react';
 
 function SpotifyLogin({ onLogin }) {
@@ -12,9 +13,14 @@ function SpotifyLogin({ onLogin }) {
   };
 
   return (
-    <button onClick={handleLogin}>Login with Spotify</button>
+    <button 
+      onClick={handleLogin}
+      className="bg-retro-purple hover:bg-retro-purple/80 text-white font-press-start py-4 px-8 rounded-lg 
+      shadow-lg hover:shadow-xl transition-all duration-300 neon-glow transform hover:scale-105"
+    >
+      Login with Spotify
+    </button>
   );
 }
 
 export default SpotifyLogin;
-

@@ -66,6 +66,27 @@ app.get("/callback", async (req, res) => {
   }
 })
 
+// Get user profile
+app.get("/me", async (req, res) => {
+  const authHeader = req.headers.authorization
+
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res
+      .status(401)
+      .json({ error: "Valid authorization token is required" })
+  }
+
+  try {
+    const token = authHeader.split(" ")[1]
+    spotifyApi.setAccessToken(token)
+
+    const data = await spotifyApi.getMe()
+    res.json(data.body)
+  } catch (error) {
+    handleApiError(error, res)
+  }
+})
+
 // Get user's top tracks
 app.get("/top-tracks", async (req, res) => {
   const { time_range = "short_term" } = req.query

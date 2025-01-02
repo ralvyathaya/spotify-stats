@@ -5,12 +5,14 @@ import TopTracks from './components/TopTracks';
 import TopArtists from './components/TopArtists';
 import RecentlyPlayed from './components/RecentlyPlayed';
 import NowPlaying from './components/NowPlaying';
+import UserProfile from './components/UserProfile';
 import { Tab } from '@headlessui/react';
 
 function App() {
   const [accessToken, setAccessToken] = useState(null);
   const [error, setError] = useState(null);
   const [timeRange, setTimeRange] = useState('short_term');
+  const [selectedTab, setSelectedTab] = useState(0);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -48,6 +50,12 @@ function App() {
     { value: 'long_term', label: 'All Time' }
   ];
 
+  const recentlyPlayedOptions = [
+    { value: '24h', label: 'Last 24 Hours' },
+    { value: '7d', label: 'Last 7 Days' },
+    { value: '30d', label: 'Last 30 Days' }
+  ];
+
   if (!accessToken) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
@@ -70,12 +78,7 @@ function App() {
         <h1 className="text-3xl font-display font-bold gradient-text">
           Spotify Stats & Insights
         </h1>
-        <button
-          onClick={handleLogout}
-          className="btn-secondary"
-        >
-          Logout
-        </button>
+        <UserProfile accessToken={accessToken} onLogout={handleLogout} />
       </header>
 
       <main className="max-w-7xl mx-auto">
@@ -83,7 +86,7 @@ function App() {
           <NowPlaying accessToken={accessToken} />
         </div>
 
-        <Tab.Group>
+        <Tab.Group onChange={setSelectedTab}>
           <div className="flex flex-col md:flex-row gap-6 mb-8">
             <Tab.List className="flex gap-2 p-1 bg-gray-100 rounded-lg">
               <Tab className={({ selected }) =>
@@ -115,21 +118,23 @@ function App() {
               </Tab>
             </Tab.List>
 
-            <div className="flex gap-2">
-              {timeRangeOptions.map(option => (
-                <button
-                  key={option.value}
-                  onClick={() => setTimeRange(option.value)}
-                  className={`px-4 py-2 rounded-md font-medium transition-all ${
-                    timeRange === option.value
-                      ? 'bg-primary-100 text-primary-700'
-                      : 'text-gray-600 hover:text-primary-600'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
+            {selectedTab !== 2 && (
+              <div className="flex gap-2">
+                {timeRangeOptions.map(option => (
+                  <button
+                    key={option.value}
+                    onClick={() => setTimeRange(option.value)}
+                    className={`px-4 py-2 rounded-md font-medium transition-all ${
+                      timeRange === option.value
+                        ? 'bg-primary-100 text-primary-700'
+                        : 'text-gray-600 hover:text-primary-600'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <Tab.Panels>

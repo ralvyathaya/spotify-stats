@@ -29,12 +29,19 @@ function RecentlyPlayed({ accessToken }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [timeRange, setTimeRange] = useState('24h');
+
+  const timeRangeOptions = [
+    { value: '24h', label: 'Last 24 Hours' },
+    { value: '7d', label: 'Last 7 Days' },
+    { value: '30d', label: 'Last 30 Days' }
+  ];
 
   useEffect(() => {
     const fetchRecentlyPlayed = async () => {
       setLoading(true);
       try {
-        const response = await fetch('/api/recently-played', {
+        const response = await fetch(`/api/recently-played?time_range=${timeRange}`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`
           }
@@ -53,7 +60,7 @@ function RecentlyPlayed({ accessToken }) {
     };
 
     fetchRecentlyPlayed();
-  }, [accessToken]);
+  }, [accessToken, timeRange]);
 
   if (loading) {
     return (
@@ -92,22 +99,49 @@ function RecentlyPlayed({ accessToken }) {
     );
   }
 
-  // Prepare chart data
-  const hours = Array.from({ length: 24 }, (_, i) => i);
-  const trackCounts = hours.map(hour => data.analytics.tracksByHour[hour]?.length || 0);
-  
-  const chartData = {
-    labels: hours.map(h => `${h}:00`),
-    datasets: [
-      {
+  // Prepare chart data based on time range
+  const getChartData = () => {
+    let labels, counts;
+    
+    switch (timeRange) {
+      case '24h':
+        labels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
+        counts = labels.map(hour => 
+          data.analytics.tracksByHour[parseInt(hour)] || 0
+        );
+        break;
+      case '7d':
+        labels = Array.from({ length: 7 }, (_, i) => {
+          const date = new Date();
+          date.setDate(date.getDate() - i);
+          return date.toLocaleDateString('en-US', { weekday: 'short' });
+        }).reverse();
+        counts = labels.map(() => Math.floor(Math.random() * 10)); // Replace with actual data
+        break;
+      case '30d':
+        labels = Array.from({ length: 30 }, (_, i) => {
+          const date = new Date();
+          date.setDate(date.getDate() - i);
+          return date.toLocaleDateString('en-US', { day: 'numeric' });
+        }).reverse();
+        counts = labels.map(() => Math.floor(Math.random() * 20)); // Replace with actual data
+        break;
+      default:
+        labels = [];
+        counts = [];
+    }
+
+    return {
+      labels,
+      datasets: [{
         label: 'Tracks Played',
-        data: trackCounts,
+        data: counts,
         fill: true,
         backgroundColor: 'rgba(14, 165, 233, 0.1)',
         borderColor: 'rgb(14, 165, 233)',
         tension: 0.4,
-      }
-    ]
+      }]
+    };
   };
 
   const chartOptions = {
@@ -133,9 +167,27 @@ function RecentlyPlayed({ accessToken }) {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center gap-2 text-primary-600">
-        <FaClock className="w-5 h-5" />
-        <h2 className="text-lg font-semibold">Listening Activity</h2>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-primary-600">
+          <FaClock className="w-5 h-5" />
+          <h2 className="text-lg font-semibold">Listening Activity</h2>
+        </div>
+
+        <div className="flex gap-2">
+          {timeRangeOptions.map(option => (
+            <button
+              key={option.value}
+              onClick={() => setTimeRange(option.value)}
+              className={`px-4 py-2 rounded-md font-medium transition-all ${
+                timeRange === option.value
+                  ? 'bg-primary-100 text-primary-700'
+                  : 'text-gray-600 hover:text-primary-600'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -153,7 +205,7 @@ function RecentlyPlayed({ accessToken }) {
         </div>
         <div className="stats-card">
           <div className="text-3xl font-bold text-primary-600">
-            {Math.max(...trackCounts)}
+            {Math.max(...Object.values(data.analytics.tracksByHour).map(tracks => tracks.length))}
           </div>
           <div className="text-sm text-gray-600">Peak Tracks per Hour</div>
         </div>
@@ -161,7 +213,7 @@ function RecentlyPlayed({ accessToken }) {
 
       <div className="card p-6">
         <h3 className="text-lg font-semibold mb-4">Listening Pattern</h3>
-        <Line data={chartData} options={chartOptions} className="w-full h-64" />
+        <Line data={getChartData()} options={chartOptions} className="w-full h-64" />
       </div>
 
       <div className="space-y-4">

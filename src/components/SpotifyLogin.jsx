@@ -1,25 +1,8 @@
 // SpotifyLogin.jsx
-import React, { useEffect } from 'react';
+import React from 'react';
+import { FaSpotify } from 'react-icons/fa';
 
 function SpotifyLogin({ onLogin }) {
-  useEffect(() => {
-    // Check if we're being redirected from Spotify
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('access_token');
-    const error = urlParams.get('error');
-
-    if (error) {
-      console.error('Error from Spotify:', error);
-      return;
-    }
-
-    if (token) {
-      onLogin(token);
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, [onLogin]);
-
   const handleLogin = async () => {
     try {
       const response = await fetch('/api/login');
@@ -35,15 +18,22 @@ function SpotifyLogin({ onLogin }) {
   };
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <button 
-        onClick={handleLogin}
-        className="bg-retro-purple hover:bg-retro-purple/80 text-white font-retro py-4 px-8 rounded-lg 
-        shadow-lg hover:shadow-xl transition-all duration-300 neon-glow transform hover:scale-105"
-      >
-        Login with Spotify
-      </button>
-      <p className="text-retro-cyan text-sm font-retro">Connect your Spotify account to get started</p>
+    <div className="flex flex-col items-center gap-6">
+      <div className="relative group">
+        <div className="absolute -inset-0.5 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-lg blur opacity-60 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse-slow"></div>
+        <button 
+          onClick={handleLogin}
+          className="relative flex items-center gap-3 px-8 py-4 bg-white rounded-lg leading-none"
+        >
+          <FaSpotify className="w-6 h-6 text-[#1DB954]" />
+          <span className="font-semibold bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-secondary-600">
+            Connect with Spotify
+          </span>
+        </button>
+      </div>
+      <p className="text-gray-600 text-sm max-w-sm text-center">
+        Connect your Spotify account to see your top tracks, artists, and listening habits
+      </p>
     </div>
   );
 }

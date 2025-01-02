@@ -1,17 +1,18 @@
 // App.jsx
 import React, { useState, useEffect } from 'react';
 import SpotifyLogin from './components/SpotifyLogin';
-import MoodSelector from './components/MoodSelector';
-import SongList from './components/SongList';
+import TopTracks from './components/TopTracks';
+import TopArtists from './components/TopArtists';
+import RecentlyPlayed from './components/RecentlyPlayed';
+import NowPlaying from './components/NowPlaying';
+import { Tab } from '@headlessui/react';
 
 function App() {
   const [accessToken, setAccessToken] = useState(null);
-  const [mood, setMood] = useState(null);
-  const [songs, setSongs] = useState([]);
   const [error, setError] = useState(null);
+  const [timeRange, setTimeRange] = useState('short_term');
 
   useEffect(() => {
-    // Check URL parameters for tokens or errors
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('access_token');
     const error = urlParams.get('error');
@@ -21,7 +22,6 @@ function App() {
       localStorage.removeItem('spotify_access_token');
     } else if (token) {
       handleLogin(token);
-      // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
     } else {
       const storedToken = localStorage.getItem('spotify_access_token');
@@ -39,64 +39,116 @@ function App() {
 
   const handleLogout = () => {
     setAccessToken(null);
-    setMood(null);
-    setSongs([]);
     localStorage.removeItem('spotify_access_token');
   };
 
-  const handleMoodSelect = async (selectedMood) => {
-    setMood(selectedMood);
-    try {
-      const response = await fetch(`/api/recommendations?mood=${selectedMood}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
-      if (!response.ok) {
-        throw new Error('Failed to fetch recommendations');
-      }
-      const data = await response.json();
-      setSongs(data);
-    } catch (error) {
-      console.error('Error fetching recommendations:', error);
-      setError('Failed to fetch song recommendations');
-    }
-  };
+  const timeRangeOptions = [
+    { value: 'short_term', label: '4 Weeks' },
+    { value: 'medium_term', label: '6 Months' },
+    { value: 'long_term', label: 'All Time' }
+  ];
 
-  return (
-    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-retro-black">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl md:text-5xl font-retro text-center mb-12 text-retro-purple neon-glow">
-          Mood Tunes
+  if (!accessToken) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <h1 className="text-4xl md:text-5xl font-display font-bold mb-8 gradient-text">
+          Spotify Stats & Insights
         </h1>
-        
         {error && (
-          <div className="text-red-500 text-center mb-4 font-retro text-sm">
+          <div className="text-red-500 text-center mb-6 font-medium">
             {error}
           </div>
         )}
+        <SpotifyLogin onLogin={handleLogin} />
+      </div>
+    );
+  }
 
-        <div className="flex flex-col items-center space-y-8">
-          {!accessToken ? (
-            <SpotifyLogin onLogin={handleLogin} />
-          ) : (
-            <>
-              <button
-                onClick={handleLogout}
-                className="text-retro-pink hover:text-retro-pink/80 font-retro text-sm underline"
-              >
-                Logout
-              </button>
-              <MoodSelector onMoodSelect={handleMoodSelect} />
-              {mood && <SongList songs={songs} />}
-            </>
-          )}
+  return (
+    <div className="min-h-screen p-4 md:p-8">
+      <header className="max-w-7xl mx-auto flex justify-between items-center mb-12">
+        <h1 className="text-3xl font-display font-bold gradient-text">
+          Spotify Stats & Insights
+        </h1>
+        <button
+          onClick={handleLogout}
+          className="btn-secondary"
+        >
+          Logout
+        </button>
+      </header>
+
+      <main className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <NowPlaying accessToken={accessToken} />
         </div>
 
-        <footer className="mt-16 text-center text-retro-cyan/60 text-xs font-retro">
-          <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
-        </footer>
-      </div>
+        <Tab.Group>
+          <div className="flex flex-col md:flex-row gap-6 mb-8">
+            <Tab.List className="flex gap-2 p-1 bg-gray-100 rounded-lg">
+              <Tab className={({ selected }) =>
+                `px-4 py-2 rounded-md font-medium transition-all ${
+                  selected
+                    ? 'bg-white text-primary-600 shadow'
+                    : 'text-gray-600 hover:text-primary-600'
+                }`
+              }>
+                Top Tracks
+              </Tab>
+              <Tab className={({ selected }) =>
+                `px-4 py-2 rounded-md font-medium transition-all ${
+                  selected
+                    ? 'bg-white text-primary-600 shadow'
+                    : 'text-gray-600 hover:text-primary-600'
+                }`
+              }>
+                Top Artists
+              </Tab>
+              <Tab className={({ selected }) =>
+                `px-4 py-2 rounded-md font-medium transition-all ${
+                  selected
+                    ? 'bg-white text-primary-600 shadow'
+                    : 'text-gray-600 hover:text-primary-600'
+                }`
+              }>
+                Recently Played
+              </Tab>
+            </Tab.List>
+
+            <div className="flex gap-2">
+              {timeRangeOptions.map(option => (
+                <button
+                  key={option.value}
+                  onClick={() => setTimeRange(option.value)}
+                  className={`px-4 py-2 rounded-md font-medium transition-all ${
+                    timeRange === option.value
+                      ? 'bg-primary-100 text-primary-700'
+                      : 'text-gray-600 hover:text-primary-600'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Tab.Panels>
+            <Tab.Panel>
+              <TopTracks accessToken={accessToken} timeRange={timeRange} />
+            </Tab.Panel>
+            <Tab.Panel>
+              <TopArtists accessToken={accessToken} timeRange={timeRange} />
+            </Tab.Panel>
+            <Tab.Panel>
+              <RecentlyPlayed accessToken={accessToken} />
+            </Tab.Panel>
+          </Tab.Panels>
+        </Tab.Group>
+      </main>
+
+      <footer className="max-w-7xl mx-auto mt-16 py-8 border-t border-gray-200 text-center text-gray-500">
+        <p>Get insights about your Spotify listening habits</p>
+      </footer>
     </div>
   );
 }

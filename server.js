@@ -7,7 +7,6 @@ dotenv.config()
 
 const app = express()
 
-// Configure CORS
 app.use(
   cors({
     origin: process.env.CLIENT_URL,
@@ -24,7 +23,6 @@ const spotifyApi = new SpotifyWebApi({
   redirectUri: process.env.SPOTIFY_REDIRECT_URI,
 })
 
-// Root route
 app.get("/", (req, res) => {
   res.json({ message: "Mood Tunes API is running" })
 })
@@ -34,9 +32,12 @@ app.get("/login", (req, res) => {
     "user-read-private",
     "user-read-email",
     "user-top-read",
-    "streaming",
-    "user-library-read",
+    "user-read-recently-played",
     "user-read-playback-state",
+    "user-read-currently-playing",
+    "user-library-read",
+    "playlist-read-private",
+    "playlist-read-collaborative",
   ]
   const state = Math.random().toString(36).substring(7)
   const authorizeURL = spotifyApi.createAuthorizeURL(scopes, state)
@@ -54,12 +55,8 @@ app.get("/callback", async (req, res) => {
   try {
     const data = await spotifyApi.authorizationCodeGrant(code)
     const { access_token, refresh_token } = data.body
-
-    // Store tokens in the API instance
     spotifyApi.setAccessToken(access_token)
     spotifyApi.setRefreshToken(refresh_token)
-
-    // Redirect to frontend with tokens
     res.redirect(
       `${process.env.CLIENT_URL}?access_token=${access_token}&refresh_token=${refresh_token}`
     )
@@ -69,17 +66,12 @@ app.get("/callback", async (req, res) => {
   }
 })
 
-app.get("/recommendations", async (req, res) => {
-  const { mood } = req.query
+// Get user's top tracks
+app.get("/top-tracks", async (req, res) => {
+  const { time_range = "short_term" } = req.query
   const authHeader = req.headers.authorization
 
-  // Validate mood parameter
-  if (!mood) {
-    return res.status(400).json({ error: "Mood parameter is required" })
-  }
-
-  // Validate authorization header
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  if (!authHeader?.startsWith("Bearer ")) {
     return res
       .status(401)
       .json({ error: "Valid authorization token is required" })
@@ -89,153 +81,167 @@ app.get("/recommendations", async (req, res) => {
     const token = authHeader.split(" ")[1]
     spotifyApi.setAccessToken(token)
 
-    // Verify the token is valid by making a test request
-    try {
-      await spotifyApi.getMe()
-    } catch (error) {
-      if (error.statusCode === 401) {
-        return res.status(401).json({ error: "Token expired or invalid" })
-      }
-      throw error
-    }
-
-    // Get recommendations
-    const recommendations = await getRecommendations(mood)
-
-    // Send response
-    res.json(recommendations)
-  } catch (error) {
-    console.error("Recommendations Error:", error)
-
-    // Handle specific error cases
-    if (error.statusCode === 401) {
-      return res.status(401).json({ error: "Token expired or invalid" })
-    }
-
-    if (error.statusCode === 429) {
-      return res.status(429).json({
-        error: "Too many requests. Please try again later.",
-        retryAfter: error.headers?.["retry-after"] || 30,
-      })
-    }
-
-    // Handle genre-related errors
-    if (error.message?.includes("genre")) {
-      return res.status(400).json({
-        error: "Invalid genre configuration",
-        details: error.message,
-      })
-    }
-
-    // Generic error response
-    res.status(error.statusCode || 500).json({
-      error: error.message || "Error fetching recommendations",
-      details:
-        process.env.NODE_ENV === "development" ? error.toString() : undefined,
-    })
-  }
-})
-
-async function getRecommendations(mood) {
-  // Define mood configurations with more common genres
-  const moodToFeatures = {
-    happy: {
-      target_valence: 0.8,
-      target_energy: 0.8,
-      seed_genres: ["pop", "dance", "happy"],
-      min_popularity: 50,
-    },
-    sad: {
-      target_valence: 0.2,
-      target_energy: 0.3,
-      seed_genres: ["acoustic", "sad", "piano"],
-      min_popularity: 50,
-    },
-    energetic: {
-      target_energy: 0.9,
-      target_tempo: 150,
-      seed_genres: ["electronic", "dance", "party"],
-      min_popularity: 50,
-    },
-    relaxed: {
-      target_energy: 0.3,
-      target_instrumentalness: 0.5,
-      seed_genres: ["ambient", "chill", "study"],
-      min_popularity: 50,
-    },
-    angry: {
-      target_energy: 0.8,
-      target_valence: 0.3,
-      seed_genres: ["rock", "metal", "intense"],
-      min_popularity: 50,
-    },
-  }
-
-  try {
-    // First, get available genre seeds from Spotify
-    const {
-      body: { genres: availableGenres },
-    } = await spotifyApi.getAvailableGenreSeeds()
-    console.log("Available genres:", availableGenres)
-
-    // Get mood config or default to happy
-    const moodConfig = moodToFeatures[mood] || moodToFeatures.happy
-
-    // Filter to only use available genres and limit to 2 seeds
-    const validGenres = moodConfig.seed_genres
-      .filter((genre) => availableGenres.includes(genre))
-      .slice(0, 2)
-
-    console.log("Using genres:", validGenres)
-
-    // If no valid genres found, use most common genres
-    if (validGenres.length === 0) {
-      validGenres.push("pop")
-      if (availableGenres.includes("rock")) {
-        validGenres.push("rock")
-      }
-    }
-
-    // Prepare recommendation options
-    const recommendationOptions = {
-      limit: 10,
-      seed_genres: validGenres,
-      min_popularity: moodConfig.min_popularity || 50,
-      ...moodConfig,
-    }
-
-    // Remove seed_genres from audio features
-    delete recommendationOptions.seed_genres
-
-    // Get recommendations with validated genres
-    const { body } = await spotifyApi.getRecommendations({
-      seed_genres: validGenres,
-      ...recommendationOptions,
+    const data = await spotifyApi.getMyTopTracks({
+      limit: 20,
+      time_range, // short_term (4 weeks), medium_term (6 months), long_term (years)
     })
 
-    if (!body.tracks || body.tracks.length === 0) {
-      throw new Error("No tracks found for the given mood")
-    }
-
-    // Map the response to our format
-    return body.tracks.map((track) => ({
+    const tracks = data.body.items.map((track) => ({
       id: track.id,
       name: track.name,
       artist: track.artists[0].name,
       album: track.album.name,
-      preview_url: track.preview_url,
       image: track.album.images[0]?.url,
+      preview_url: track.preview_url,
       external_url: track.external_urls.spotify,
+      popularity: track.popularity,
     }))
+
+    res.json(tracks)
   } catch (error) {
-    console.error("Spotify API Error:", error)
-    // Add more detailed error logging
-    if (error.statusCode) {
-      console.error("Status Code:", error.statusCode)
-      console.error("Error Body:", error.body)
-    }
-    throw error
+    handleApiError(error, res)
   }
+})
+
+// Get user's top artists
+app.get("/top-artists", async (req, res) => {
+  const { time_range = "short_term" } = req.query
+  const authHeader = req.headers.authorization
+
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res
+      .status(401)
+      .json({ error: "Valid authorization token is required" })
+  }
+
+  try {
+    const token = authHeader.split(" ")[1]
+    spotifyApi.setAccessToken(token)
+
+    const data = await spotifyApi.getMyTopArtists({
+      limit: 20,
+      time_range,
+    })
+
+    const artists = data.body.items.map((artist) => ({
+      id: artist.id,
+      name: artist.name,
+      image: artist.images[0]?.url,
+      genres: artist.genres,
+      popularity: artist.popularity,
+      external_url: artist.external_urls.spotify,
+    }))
+
+    res.json(artists)
+  } catch (error) {
+    handleApiError(error, res)
+  }
+})
+
+// Get user's recently played tracks
+app.get("/recently-played", async (req, res) => {
+  const authHeader = req.headers.authorization
+
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res
+      .status(401)
+      .json({ error: "Valid authorization token is required" })
+  }
+
+  try {
+    const token = authHeader.split(" ")[1]
+    spotifyApi.setAccessToken(token)
+
+    const data = await spotifyApi.getMyRecentlyPlayedTracks({ limit: 50 })
+
+    const tracks = data.body.items.map((item) => ({
+      id: item.track.id,
+      name: item.track.name,
+      artist: item.track.artists[0].name,
+      album: item.track.album.name,
+      image: item.track.album.images[0]?.url,
+      played_at: item.played_at,
+      external_url: item.track.external_urls.spotify,
+    }))
+
+    // Group tracks by hour of day
+    const tracksByHour = tracks.reduce((acc, track) => {
+      const hour = new Date(track.played_at).getHours()
+      if (!acc[hour]) acc[hour] = []
+      acc[hour].push(track)
+      return acc
+    }, {})
+
+    res.json({
+      tracks,
+      analytics: {
+        tracksByHour,
+        totalTracks: tracks.length,
+        uniqueTracks: new Set(tracks.map((t) => t.id)).size,
+      },
+    })
+  } catch (error) {
+    handleApiError(error, res)
+  }
+})
+
+// Get user's current playing track
+app.get("/now-playing", async (req, res) => {
+  const authHeader = req.headers.authorization
+
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res
+      .status(401)
+      .json({ error: "Valid authorization token is required" })
+  }
+
+  try {
+    const token = authHeader.split(" ")[1]
+    spotifyApi.setAccessToken(token)
+
+    const data = await spotifyApi.getMyCurrentPlayingTrack()
+
+    if (!data.body || !data.body.item) {
+      return res.json(null)
+    }
+
+    const track = {
+      id: data.body.item.id,
+      name: data.body.item.name,
+      artist: data.body.item.artists[0].name,
+      album: data.body.item.album.name,
+      image: data.body.item.album.images[0]?.url,
+      progress_ms: data.body.progress_ms,
+      duration_ms: data.body.item.duration_ms,
+      external_url: data.body.item.external_urls.spotify,
+      is_playing: data.body.is_playing,
+    }
+
+    res.json(track)
+  } catch (error) {
+    handleApiError(error, res)
+  }
+})
+
+function handleApiError(error, res) {
+  console.error("API Error:", error)
+
+  if (error.statusCode === 401) {
+    return res.status(401).json({ error: "Token expired or invalid" })
+  }
+
+  if (error.statusCode === 429) {
+    return res.status(429).json({
+      error: "Too many requests. Please try again later.",
+      retryAfter: error.headers?.["retry-after"] || 30,
+    })
+  }
+
+  res.status(error.statusCode || 500).json({
+    error: error.message || "An error occurred",
+    details:
+      process.env.NODE_ENV === "development" ? error.toString() : undefined,
+  })
 }
 
 const PORT = process.env.PORT || 3001

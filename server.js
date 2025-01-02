@@ -73,69 +73,152 @@ app.get("/recommendations", async (req, res) => {
   const { mood } = req.query
   const authHeader = req.headers.authorization
 
-  if (!authHeader) {
-    return res.status(401).json({ error: "No authorization token provided" })
+  // Validate mood parameter
+  if (!mood) {
+    return res.status(400).json({ error: "Mood parameter is required" })
   }
 
-  const token = authHeader.split(" ")[1]
-  spotifyApi.setAccessToken(token)
+  // Validate authorization header
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res
+      .status(401)
+      .json({ error: "Valid authorization token is required" })
+  }
 
   try {
+    const token = authHeader.split(" ")[1]
+    spotifyApi.setAccessToken(token)
+
+    // Verify the token is valid by making a test request
+    try {
+      await spotifyApi.getMe()
+    } catch (error) {
+      if (error.statusCode === 401) {
+        return res.status(401).json({ error: "Token expired or invalid" })
+      }
+      throw error
+    }
+
+    // Get recommendations
     const recommendations = await getRecommendations(mood)
+
+    // Send response
     res.json(recommendations)
   } catch (error) {
     console.error("Recommendations Error:", error)
+
+    // Handle specific error cases
     if (error.statusCode === 401) {
-      return res.status(401).json({ error: "Token expired" })
+      return res.status(401).json({ error: "Token expired or invalid" })
     }
-    res
-      .status(error.statusCode || 400)
-      .json({ error: "Error fetching recommendations" })
+
+    if (error.statusCode === 429) {
+      return res.status(429).json({
+        error: "Too many requests. Please try again later.",
+        retryAfter: error.headers?.["retry-after"] || 30,
+      })
+    }
+
+    // Handle genre-related errors
+    if (error.message?.includes("genre")) {
+      return res.status(400).json({
+        error: "Invalid genre configuration",
+        details: error.message,
+      })
+    }
+
+    // Generic error response
+    res.status(error.statusCode || 500).json({
+      error: error.message || "Error fetching recommendations",
+      details:
+        process.env.NODE_ENV === "development" ? error.toString() : undefined,
+    })
   }
 })
 
 async function getRecommendations(mood) {
+  // Define mood configurations with more common genres
   const moodToFeatures = {
     happy: {
-      min_valence: 0.7,
+      target_valence: 0.8,
       target_energy: 0.8,
-      seed_genres: ["happy", "pop", "dance"],
+      seed_genres: ["pop", "dance", "happy"],
+      min_popularity: 50,
     },
     sad: {
-      max_valence: 0.3,
+      target_valence: 0.2,
       target_energy: 0.3,
-      seed_genres: ["sad", "acoustic", "piano"],
+      seed_genres: ["acoustic", "sad", "piano"],
+      min_popularity: 50,
     },
     energetic: {
-      min_energy: 0.8,
+      target_energy: 0.9,
       target_tempo: 150,
-      seed_genres: ["dance", "electronic", "edm"],
+      seed_genres: ["electronic", "dance", "party"],
+      min_popularity: 50,
     },
     relaxed: {
-      max_energy: 0.4,
+      target_energy: 0.3,
       target_instrumentalness: 0.5,
-      seed_genres: ["ambient", "chill", "sleep"],
+      seed_genres: ["ambient", "chill", "study"],
+      min_popularity: 50,
     },
     angry: {
       target_energy: 0.8,
-      target_valence: 0.2,
-      seed_genres: ["metal", "rock", "punk"],
+      target_valence: 0.3,
+      seed_genres: ["rock", "metal", "intense"],
+      min_popularity: 50,
     },
   }
 
-  const moodConfig = moodToFeatures[mood] || {}
-  const { seed_genres, ...features } = moodConfig
-
   try {
+    // First, get available genre seeds from Spotify
     const {
-      body: { tracks },
-    } = await spotifyApi.getRecommendations({
+      body: { genres: availableGenres },
+    } = await spotifyApi.getAvailableGenreSeeds()
+    console.log("Available genres:", availableGenres)
+
+    // Get mood config or default to happy
+    const moodConfig = moodToFeatures[mood] || moodToFeatures.happy
+
+    // Filter to only use available genres and limit to 2 seeds
+    const validGenres = moodConfig.seed_genres
+      .filter((genre) => availableGenres.includes(genre))
+      .slice(0, 2)
+
+    console.log("Using genres:", validGenres)
+
+    // If no valid genres found, use most common genres
+    if (validGenres.length === 0) {
+      validGenres.push("pop")
+      if (availableGenres.includes("rock")) {
+        validGenres.push("rock")
+      }
+    }
+
+    // Prepare recommendation options
+    const recommendationOptions = {
       limit: 10,
-      seed_genres: seed_genres || [mood],
-      ...features,
+      seed_genres: validGenres,
+      min_popularity: moodConfig.min_popularity || 50,
+      ...moodConfig,
+    }
+
+    // Remove seed_genres from audio features
+    delete recommendationOptions.seed_genres
+
+    // Get recommendations with validated genres
+    const { body } = await spotifyApi.getRecommendations({
+      seed_genres: validGenres,
+      ...recommendationOptions,
     })
 
-    return tracks.map((track) => ({
+    if (!body.tracks || body.tracks.length === 0) {
+      throw new Error("No tracks found for the given mood")
+    }
+
+    // Map the response to our format
+    return body.tracks.map((track) => ({
       id: track.id,
       name: track.name,
       artist: track.artists[0].name,
@@ -146,6 +229,11 @@ async function getRecommendations(mood) {
     }))
   } catch (error) {
     console.error("Spotify API Error:", error)
+    // Add more detailed error logging
+    if (error.statusCode) {
+      console.error("Status Code:", error.statusCode)
+      console.error("Error Body:", error.body)
+    }
     throw error
   }
 }

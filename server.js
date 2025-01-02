@@ -9,16 +9,48 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
+// Add CSP headers
+app.use((req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:3001"
+  )
+  next()
+})
+
 const spotifyApi = new SpotifyWebApi({
   clientId: process.env.SPOTIFY_CLIENT_ID,
   clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
   redirectUri: process.env.SPOTIFY_REDIRECT_URI,
 })
 
+// Root route
+app.get("/", (req, res) => {
+  res.json({ message: "Mood Tunes API is running" })
+})
+
 app.get("/login", (req, res) => {
   const scopes = ["user-read-private", "user-read-email", "user-top-read"]
   const authorizeURL = spotifyApi.createAuthorizeURL(scopes)
   res.json({ url: authorizeURL })
+})
+
+// Handle both GET and POST for callback
+app.get("/callback", async (req, res) => {
+  const { code } = req.query
+  try {
+    const data = await spotifyApi.authorizationCodeGrant(code)
+    const { access_token, refresh_token } = data.body
+    spotifyApi.setAccessToken(access_token)
+    spotifyApi.setRefreshToken(refresh_token)
+
+    // Redirect to frontend with tokens
+    res.redirect(
+      `${process.env.CLIENT_URL}?access_token=${access_token}&refresh_token=${refresh_token}`
+    )
+  } catch (error) {
+    res.redirect(`${process.env.CLIENT_URL}?error=authentication_failed`)
+  }
 })
 
 app.post("/callback", async (req, res) => {

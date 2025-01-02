@@ -60,7 +60,7 @@ function App() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <h1 className="text-4xl md:text-5xl font-display font-bold mb-8 gradient-text">
-          Spotify Stats & Insights
+          yourSpotifyStats
         </h1>
         {error && (
           <div className="text-red-500 text-center mb-6 font-medium">

@@ -1,4 +1,3 @@
-// App.jsx
 import React, { useState, useEffect } from 'react';
 import SpotifyLogin from './components/SpotifyLogin';
 import TopTracks from './components/TopTracks';
@@ -59,7 +58,7 @@ function App() {
   if (!accessToken) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <h1 className="text-4xl md:text-5xl font-display font-bold mb-8 gradient-text">
+        <h1 className="text-4xl md:text-5xl font-display font-bold mb-8 gradient-text leading-tight">
           yourSpotifyStats
         </h1>
         {error && (
@@ -75,8 +74,8 @@ function App() {
   return (
     <div className="min-h-screen p-4 md:p-8">
       <header className="max-w-7xl mx-auto flex justify-between items-center mb-12">
-        <h1 className="text-3xl font-display font-bold gradient-text">
-          Spotify Stats & Insights
+        <h1 className="text-3xl font-display font-bold gradient-text leading-tight">
+          Here's Your Spotify Stats & Insights
         </h1>
         <UserProfile accessToken={accessToken} onLogout={handleLogout} />
       </header>

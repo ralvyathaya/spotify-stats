@@ -53,15 +53,15 @@ function UserProfile({ accessToken, onLogout }) {
             <FaUser className="w-4 h-4 text-primary-600" />
           </div>
         )}
-        <span className="font-medium text-gray-700">{user.display_name}</span>
+        <span className="hidden sm:block font-medium text-gray-700">{user.display_name}</span>
       </Menu.Button>
 
-      <Menu.Items className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-1 focus:outline-none">
+      <Menu.Items className="absolute right-0 mt-2 w-60 bg-white rounded-lg shadow-lg border border-gray-100 py-1 focus:outline-none">
         <Menu.Item>
           {({ active }) => (
-            <div className="px-4 py-2 border-b border-gray-100">
-              <div className="text-sm font-medium text-gray-900">{user.display_name}</div>
-              <div className="text-xs text-gray-500">{user.email}</div>
+            <div className="px-4 py-3 border-b border-gray-100 text-sm">
+              <div className="truncate font-medium text-gray-900">{user.display_name}</div>
+              <div className="truncate text-xs text-gray-500">{user.email}</div>
             </div>
           )}
         </Menu.Item>
@@ -84,4 +84,4 @@ function UserProfile({ accessToken, onLogout }) {
   );
 }
 
-export default UserProfile; 
+export default UserProfile;

@@ -1,0 +1,74 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import url('https://rsms.me/inter/inter.css');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter var', system-ui, sans-serif;
+  }
+}
+
+body {
+  @apply bg-white text-gray-900;
+  background-image: radial-gradient(circle at center, rgba(14, 165, 233, 0.15) 0, rgba(217, 70, 239, 0.15) 25%, transparent 50%);
+}
+
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-secondary-600 animate-gradient;
+}
+
+.card {
+  @apply bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300
+         border border-gray-100 hover:border-primary-100 p-4;
+}
+
+.btn-primary {
+  @apply px-6 py-3 bg-primary-500 text-white rounded-lg font-semibold
+         hover:bg-primary-600 active:bg-primary-700 transition-colors duration-200
+         focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+}
+
+.btn-secondary {
+  @apply px-6 py-3 bg-white text-primary-600 rounded-lg font-semibold
+         border border-primary-200 hover:bg-primary-50 active:bg-primary-100
+         transition-colors duration-200 focus:outline-none focus:ring-2
+         focus:ring-primary-500 focus:ring-offset-2;
+}
+
+.stats-card {
+  @apply flex flex-col items-center justify-center p-6 bg-gradient-to-br
+         from-primary-50 to-secondary-50 rounded-xl shadow-sm;
+}
+
+.track-progress {
+  @apply h-1 bg-gray-200 rounded-full overflow-hidden;
+}
+
+.track-progress-bar {
+  @apply h-full bg-gradient-to-r from-primary-500 to-secondary-500 transition-all duration-500;
+}
+
+.nav-link {
+  @apply text-gray-600 hover:text-primary-600 font-medium transition-colors duration-200;
+}
+
+.nav-link.active {
+  @apply text-primary-600 font-semibold;
+}
+
+/* Modern scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 rounded-full;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-primary-200 rounded-full hover:bg-primary-300 transition-colors duration-200;
+}

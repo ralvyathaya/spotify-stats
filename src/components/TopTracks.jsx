@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FaSpotify, FaPlay, FaFire, FaTiktok, FaGuitar, FaMusic } from 'react-icons/fa';
+import { FaSpotify, FaPlay, FaCompactDisc, FaCalendarAlt, FaClock } from 'react-icons/fa';
 import { IoTrendingUp } from 'react-icons/io5';
-import { BsEmojiLaughingFill } from 'react-icons/bs';
+import { BsMusicNoteBeamed } from 'react-icons/bs';
 
 function TopTracks({ accessToken, timeRange }) {
   const [tracks, setTracks] = useState([]);
@@ -21,18 +21,7 @@ function TopTracks({ accessToken, timeRange }) {
         if (!response.ok) throw new Error('Failed to fetch top tracks');
         
         const data = await response.json();
-        
-        // Add fun metrics to tracks
-        const enhancedTracks = data.map(track => ({
-          ...track,
-          // Generate random fun metrics for demonstration
-          edgyPercentage: Math.floor(Math.random() * 100),
-          tiktokViral: Math.random() > 0.7,
-          memePotential: Math.floor(Math.random() * 100),
-          danceability: Math.floor(Math.random() * 100),
-        }));
-        
-        setTracks(enhancedTracks);
+        setTracks(data);
       } catch (err) {
         console.error('Error fetching top tracks:', err);
         setError(err.message);
@@ -70,13 +59,26 @@ function TopTracks({ accessToken, timeRange }) {
     );
   }
 
-  // Helper function for rendering track feature badge
-  const renderFeatureBadge = (icon, value, label, color) => (
+  // Helper function for rendering track metadata badge
+  const renderMetadataBadge = (icon, label, color) => (
     <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${color}`}>
       {icon}
-      <span>{value} {label}</span>
+      <span>{label}</span>
     </div>
   );
+
+  // Format track duration from ms to mm:ss
+  const formatDuration = (ms) => {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = ((ms % 60000) / 1000).toFixed(0);
+    return `${minutes}:${seconds.padStart(2, '0')}`;
+  };
+  
+  // Format track release date to year only
+  const formatReleaseDate = (date) => {
+    if (!date) return 'Unknown';
+    return new Date(date).getFullYear();
+  };
 
   return (
     <div className="space-y-6">
@@ -113,10 +115,9 @@ function TopTracks({ accessToken, timeRange }) {
                     {track.popularity}% popular
                   </div>
                   
-                  {track.tiktokViral && (
-                    <div className="text-xs px-2 py-0.5 bg-pink-900 rounded-full text-pink-300 flex items-center gap-1">
-                      <FaTiktok className="w-3 h-3" />
-                      <span>TikTok viral</span>
+                  {track.explicit && (
+                    <div className="text-xs px-2 py-0.5 bg-red-900 rounded-full text-red-300 flex items-center gap-1">
+                      <span>Explicit</span>
                     </div>
                   )}
                 </div>
@@ -132,27 +133,24 @@ function TopTracks({ accessToken, timeRange }) {
               </a>
             </div>
 
-            {/* Track features */}
+            {/* Track metadata - using real data */}
             <div className="mt-3 pt-3 border-t border-gray-700 flex flex-wrap gap-2">
-              {renderFeatureBadge(
-                <FaGuitar className="w-3 h-3" />, 
-                `${track.edgyPercentage}%`, 
-                'edgy', 
-                track.edgyPercentage > 70 ? 'bg-purple-900 text-purple-300' : 'bg-gray-700 text-gray-300'
+              {renderMetadataBadge(
+                <FaCompactDisc className="w-3 h-3" />, 
+                track.album || 'Unknown Album', 
+                'bg-gray-700 text-gray-300'
               )}
               
-              {renderFeatureBadge(
-                <BsEmojiLaughingFill className="w-3 h-3" />, 
-                `${track.memePotential}%`, 
-                'meme potential', 
-                track.memePotential > 70 ? 'bg-green-900 text-green-300' : 'bg-gray-700 text-gray-300'
+              {track.release_date && renderMetadataBadge(
+                <FaCalendarAlt className="w-3 h-3" />, 
+                formatReleaseDate(track.release_date), 
+                'bg-gray-700 text-gray-300'
               )}
               
-              {renderFeatureBadge(
-                <FaFire className="w-3 h-3" />, 
-                `${track.danceability}%`, 
-                'dance', 
-                track.danceability > 70 ? 'bg-orange-900 text-orange-300' : 'bg-gray-700 text-gray-300'
+              {track.duration_ms && renderMetadataBadge(
+                <FaClock className="w-3 h-3" />, 
+                formatDuration(track.duration_ms), 
+                'bg-gray-700 text-gray-300'
               )}
             </div>
 

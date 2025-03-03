@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FaSpotify, FaHotjar, FaCrown, FaUserSecret } from 'react-icons/fa';
+import { FaSpotify, FaUser, FaGlobe, FaHashtag } from 'react-icons/fa';
 import { IoMusicalNotes } from 'react-icons/io5';
-import { BsEmojiLaughingFill } from 'react-icons/bs';
 
 function TopArtists({ accessToken, timeRange }) {
   const [artists, setArtists] = useState([]);
@@ -21,18 +20,7 @@ function TopArtists({ accessToken, timeRange }) {
         if (!response.ok) throw new Error('Failed to fetch top artists');
         
         const data = await response.json();
-        
-        // Add fun metrics to artists
-        const enhancedArtists = data.map(artist => ({
-          ...artist,
-          // Generate random fun metrics for demonstration
-          trendinessScore: Math.floor(Math.random() * 100),
-          undergroundScore: Math.floor(Math.random() * 100),
-          memeCultureImpact: Math.floor(Math.random() * 100),
-          isRoyalty: Math.random() > 0.85, // Top-tier artists
-        }));
-        
-        setArtists(enhancedArtists);
+        setArtists(data);
       } catch (err) {
         console.error('Error fetching top artists:', err);
         setError(err.message);
@@ -66,15 +54,23 @@ function TopArtists({ accessToken, timeRange }) {
     );
   }
 
-  // Helper function to determine badge color based on score
-  const getBadgeColor = (score, type) => {
-    if (type === 'underground') {
-      return score > 70 ? 'bg-blue-900 text-blue-300' : 'bg-gray-700 text-gray-300';
-    } else if (type === 'meme') {
-      return score > 70 ? 'bg-green-900 text-green-300' : 'bg-gray-700 text-gray-300';
-    } else { // trending
-      return score > 70 ? 'bg-red-900 text-red-300' : 'bg-gray-700 text-gray-300';
-    }
+  // Helper function for creating artist info badges
+  const createArtistBadge = (icon, label, value, color) => (
+    <div className={`flex items-center justify-between text-xs px-2 py-1 rounded-full ${color}`}>
+      <div className="flex items-center gap-1">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <span>{value}</span>
+    </div>
+  );
+
+  // Helper function to get popularity tier
+  const getPopularityTier = (popularity) => {
+    if (popularity >= 80) return 'Mainstream';
+    if (popularity >= 60) return 'Popular';
+    if (popularity >= 40) return 'Rising';
+    return 'Underground';
   };
 
   return (
@@ -102,11 +98,6 @@ function TopArtists({ accessToken, timeRange }) {
               )}
               <div className="absolute bottom-2 left-2 right-2 text-white opacity-0 group-hover:opacity-100 transition-opacity">
                 <div className="text-sm font-medium">#{index + 1}</div>
-                {artist.isRoyalty && (
-                  <div className="absolute top-2 right-2 text-amber-300">
-                    <FaCrown className="w-6 h-6" />
-                  </div>
-                )}
               </div>
             </div>
 
@@ -140,31 +131,31 @@ function TopArtists({ accessToken, timeRange }) {
                 </a>
               </div>
               
-              {/* Artist metrics */}
+              {/* Artist real metrics */}
               <div className="grid grid-cols-1 gap-2 mt-2 pt-2 border-t border-gray-700">
-                <div className={`flex items-center justify-between text-xs px-2 py-1 rounded-full ${getBadgeColor(artist.trendinessScore, 'trending')}`}>
-                  <div className="flex items-center gap-1">
-                    <FaHotjar className="w-3 h-3" />
-                    <span>Trending Score</span>
-                  </div>
-                  <span>{artist.trendinessScore}%</span>
-                </div>
+                {/* Popularity tier based on actual popularity score */}
+                {createArtistBadge(
+                  <FaHashtag className="w-3 h-3" />,
+                  "Popularity Tier",
+                  getPopularityTier(artist.popularity),
+                  artist.popularity >= 80 ? 'bg-purple-900 text-purple-300' : 'bg-gray-700 text-gray-300'
+                )}
                 
-                <div className={`flex items-center justify-between text-xs px-2 py-1 rounded-full ${getBadgeColor(artist.undergroundScore, 'underground')}`}>
-                  <div className="flex items-center gap-1">
-                    <FaUserSecret className="w-3 h-3" />
-                    <span>Underground</span>
-                  </div>
-                  <span>{artist.undergroundScore}%</span>
-                </div>
+                {/* Follower count if available */}
+                {artist.followers && createArtistBadge(
+                  <FaUser className="w-3 h-3" />,
+                  "Followers",
+                  artist.followers.toLocaleString(),
+                  'bg-blue-900 text-blue-300'
+                )}
                 
-                <div className={`flex items-center justify-between text-xs px-2 py-1 rounded-full ${getBadgeColor(artist.memeCultureImpact, 'meme')}`}>
-                  <div className="flex items-center gap-1">
-                    <BsEmojiLaughingFill className="w-3 h-3" />
-                    <span>Meme Impact</span>
-                  </div>
-                  <span>{artist.memeCultureImpact}%</span>
-                </div>
+                {/* Total genres count */}
+                {createArtistBadge(
+                  <FaGlobe className="w-3 h-3" />,
+                  "Genres",
+                  artist.genres?.length || 0,
+                  'bg-green-900 text-green-300'
+                )}
               </div>
             </div>
           </div>

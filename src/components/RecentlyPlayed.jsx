@@ -30,7 +30,7 @@ function RecentlyPlayed({ accessToken }) {
   const timeRangeOptions = [
     { value: '24h', label: 'Last 24 Hours' },
     { value: '7d', label: 'Last 7 Days' },
-    { value: '30d', label: 'Last 30 Days' }
+    { value: '30d', label: 'Last 30 Days' },
   ];
 
   useEffect(() => {
@@ -39,12 +39,12 @@ function RecentlyPlayed({ accessToken }) {
       try {
         const response = await fetch(`/api/recently-played?time_range=${timeRange}`, {
           headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
+            'Authorization': `Bearer ${accessToken}`,
+          },
         });
-        
+
         if (!response.ok) throw new Error('Failed to fetch recently played tracks');
-        
+
         const data = await response.json();
         setData(data);
       } catch (err) {
@@ -95,57 +95,87 @@ function RecentlyPlayed({ accessToken }) {
     );
   }
 
-  // Prepare chart data based on time range
-  const getChartData = () => {
-    let labels, counts;
-    
+  // Prepare chart data and stats based on local time
+  const getChartDataAndStats = () => {
+    if (!data || !data.tracks) return { chartData: { labels: [], datasets: [] }, stats: {} };
+
+    let labels = [];
+    let counts = [];
+    let totalTracks = data.tracks.length;
+    let uniqueTracks = new Set(data.tracks.map(track => track.id)).size;
+    let peakValue;
+
+    const now = new Date();
+    const currentHourStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0, 0);
+
     switch (timeRange) {
       case '24h':
-        // Use 24-hour format with local timezone
-        labels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
-        
-        // Convert hour data to local timezone
-        const localHourCounts = {};
-        
-        // Convert UTC hours to local hours
-        Object.entries(data.analytics.tracksByHour || {}).forEach(([hour, tracks]) => {
-          const utcHour = parseInt(hour);
-          // Convert UTC hour to local hour
-          const date = new Date();
-          date.setUTCHours(utcHour, 0, 0, 0);
-          const localHour = date.getHours();
-          
-          localHourCounts[localHour] = (localHourCounts[localHour] || 0) + tracks.length;
+        const earliestStart = new Date(currentHourStart.getTime() - 24 * 60 * 60 * 1000);
+        counts = Array(24).fill(0);
+        labels = Array(24).fill('').map((_, i) => {
+          const slotStart = new Date(earliestStart.getTime() + i * 3600 * 1000);
+          return slotStart.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: false });
         });
-        
-        // Map the local hour counts to the labels
-        counts = labels.map(hour => 
-          localHourCounts[parseInt(hour)] || 0
-        );
+
+        data.tracks.forEach(track => {
+          const trackDate = new Date(track.played_at);
+          if (trackDate >= earliestStart && trackDate < currentHourStart) {
+            const hoursFromStart = Math.floor((trackDate.getTime() - earliestStart.getTime()) / (3600 * 1000));
+            if (hoursFromStart >= 0 && hoursFromStart < 24) {
+              counts[hoursFromStart] += 1;
+            }
+          }
+        });
+        peakValue = Math.max(...counts);
         break;
+
       case '7d':
-        // Get names of days in local language
-        labels = Array.from({ length: 7 }, (_, i) => {
-          const date = new Date();
-          date.setDate(date.getDate() - i);
-          return date.toLocaleDateString('en-US', { weekday: 'short' });
-        }).reverse();
-        counts = labels.map(() => Math.floor(Math.random() * 10)); // Replace with actual data
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+        const earliestDay = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
+        counts = Array(7).fill(0);
+        labels = Array(7).fill('').map((_, i) => {
+          const day = new Date(earliestDay.getTime() + i * 86400 * 1000);
+          return day.toLocaleDateString('en-US', { weekday: 'short' });
+        });
+
+        data.tracks.forEach(track => {
+          const trackDate = new Date(track.played_at);
+          const localDate = new Date(trackDate.getFullYear(), trackDate.getMonth(), trackDate.getDate());
+          const daysFromStart = Math.floor((localDate - earliestDay) / (86400 * 1000));
+          if (daysFromStart >= 0 && daysFromStart < 7) {
+            counts[daysFromStart] += 1;
+          }
+        });
+        peakValue = Math.max(...counts);
         break;
+
       case '30d':
-        labels = Array.from({ length: 30 }, (_, i) => {
-          const date = new Date();
-          date.setDate(date.getDate() - i);
-          return date.toLocaleDateString('en-US', { day: 'numeric' });
-        }).reverse();
-        counts = labels.map(() => Math.floor(Math.random() * 20)); // Replace with actual data
+        const today30 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+        const earliestDay30 = new Date(today30.getTime() - 29 * 24 * 60 * 60 * 1000);
+        counts = Array(30).fill(0);
+        labels = Array(30).fill('').map((_, i) => {
+          const day = new Date(earliestDay30.getTime() + i * 86400 * 1000);
+          return day.toLocaleDateString('en-US', { day: 'numeric' });
+        });
+
+        data.tracks.forEach(track => {
+          const trackDate = new Date(track.played_at);
+          const localDate = new Date(trackDate.getFullYear(), trackDate.getMonth(), trackDate.getDate());
+          const daysFromStart = Math.floor((localDate - earliestDay30) / (86400 * 1000));
+          if (daysFromStart >= 0 && daysFromStart < 30) {
+            counts[daysFromStart] += 1;
+          }
+        });
+        peakValue = Math.max(...counts);
         break;
+
       default:
         labels = [];
         counts = [];
+        peakValue = 0;
     }
 
-    return {
+    const chartData = {
       labels,
       datasets: [{
         label: 'Tracks Played',
@@ -155,9 +185,20 @@ function RecentlyPlayed({ accessToken }) {
         borderWidth: 1,
         borderRadius: 4,
         hoverBackgroundColor: 'rgba(217, 70, 239, 0.7)',
-      }]
+      }],
     };
+
+    const stats = {
+      totalTracks,
+      uniqueTracks,
+      peakValue,
+      peakLabel: timeRange === '24h' ? 'Peak Tracks per Hour' : 'Peak Tracks per Day',
+    };
+
+    return { chartData, stats };
   };
+
+  const { chartData, stats } = getChartDataAndStats();
 
   const chartOptions = {
     responsive: true,
@@ -170,11 +211,26 @@ function RecentlyPlayed({ accessToken }) {
         intersect: false,
         callbacks: {
           title: (context) => {
+            const index = context[0].dataIndex;
             if (timeRange === '24h') {
-              return `${context[0].label} (Local Time)`;
+              const now = new Date();
+              const currentHourStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0, 0);
+              const earliestStart = new Date(currentHourStart.getTime() - 24 * 3600 * 1000);
+              const slotStart = new Date(earliestStart.getTime() + index * 3600 * 1000);
+              const slotEnd = new Date(slotStart.getTime() + 3600 * 1000);
+              return `Between ${slotStart.toLocaleString()} and ${slotEnd.toLocaleString()}`;
+            } else if (timeRange === '7d') {
+              const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+              const day = new Date(today.getTime() - (6 - index) * 86400 * 1000);
+              return day.toLocaleDateString();
+            } else if (timeRange === '30d') {
+              const today30 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+              const day = new Date(today30.getTime() - (29 - index) * 86400 * 1000);
+              return day.toLocaleDateString();
             }
             return context[0].label;
-          }
+          },
+          label: (context) => `${context.parsed.y} tracks`,
         },
         titleColor: '#fff',
         backgroundColor: 'rgba(30, 41, 59, 0.9)',
@@ -190,7 +246,7 @@ function RecentlyPlayed({ accessToken }) {
         },
         grid: {
           color: 'rgba(255, 255, 255, 0.1)',
-        }
+        },
       },
       x: {
         ticks: {
@@ -198,8 +254,8 @@ function RecentlyPlayed({ accessToken }) {
         },
         grid: {
           color: 'rgba(255, 255, 255, 0.1)',
-        }
-      }
+        },
+      },
     },
   };
 
@@ -231,27 +287,27 @@ function RecentlyPlayed({ accessToken }) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="stats-card">
           <div className="text-3xl font-bold text-primary-400">
-            {data.analytics.totalTracks}
+            {stats.totalTracks}
           </div>
           <div className="text-sm text-gray-400">Total Tracks</div>
         </div>
         <div className="stats-card">
           <div className="text-3xl font-bold text-primary-400">
-            {data.analytics.uniqueTracks}
+            {stats.uniqueTracks}
           </div>
           <div className="text-sm text-gray-400">Unique Tracks</div>
         </div>
         <div className="stats-card">
           <div className="text-3xl font-bold text-primary-400">
-            {Math.max(...Object.values(data.analytics.tracksByHour || {}).map(tracks => tracks.length) || [0])}
+            {stats.peakValue}
           </div>
-          <div className="text-sm text-gray-400">Peak Tracks per Hour</div>
+          <div className="text-sm text-gray-400">{stats.peakLabel}</div>
         </div>
       </div>
 
       <div className="card p-6">
         <h3 className="text-lg font-semibold mb-4">Listening Pattern (Local Time)</h3>
-        <Bar data={getChartData()} options={chartOptions} className="w-full h-64" />
+        <Bar data={chartData} options={chartOptions} className="w-full h-64" />
       </div>
 
       <div className="space-y-4">
@@ -295,4 +351,4 @@ function RecentlyPlayed({ accessToken }) {
   );
 }
 
-export default RecentlyPlayed; 
+export default RecentlyPlayed;

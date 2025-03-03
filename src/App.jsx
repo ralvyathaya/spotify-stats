@@ -87,12 +87,12 @@ function App() {
 
         <Tab.Group onChange={setSelectedTab}>
           <div className="flex flex-col md:flex-row gap-6 mb-8">
-            <Tab.List className="flex gap-2 p-1 bg-gray-100 rounded-lg">
+            <Tab.List className="flex gap-2 p-1 bg-gray-700 rounded-lg">
               <Tab className={({ selected }) =>
                 `px-4 py-2 rounded-md font-medium transition-all ${
                   selected
-                    ? 'bg-white text-primary-600 shadow'
-                    : 'text-gray-600 hover:text-primary-600'
+                    ? 'bg-gray-800 text-primary-400 shadow'
+                    : 'text-gray-400 hover:text-primary-400'
                 }`
               }>
                 Top Tracks
@@ -100,8 +100,8 @@ function App() {
               <Tab className={({ selected }) =>
                 `px-4 py-2 rounded-md font-medium transition-all ${
                   selected
-                    ? 'bg-white text-primary-600 shadow'
-                    : 'text-gray-600 hover:text-primary-600'
+                    ? 'bg-gray-800 text-primary-400 shadow'
+                    : 'text-gray-400 hover:text-primary-400'
                 }`
               }>
                 Top Artists
@@ -109,8 +109,8 @@ function App() {
               <Tab className={({ selected }) =>
                 `px-4 py-2 rounded-md font-medium transition-all ${
                   selected
-                    ? 'bg-white text-primary-600 shadow'
-                    : 'text-gray-600 hover:text-primary-600'
+                    ? 'bg-gray-800 text-primary-400 shadow'
+                    : 'text-gray-400 hover:text-primary-400'
                 }`
               }>
                 Recently Played
@@ -125,8 +125,8 @@ function App() {
                     onClick={() => setTimeRange(option.value)}
                     className={`px-4 py-2 rounded-md font-medium transition-all ${
                       timeRange === option.value
-                        ? 'bg-primary-100 text-primary-700'
-                        : 'text-gray-600 hover:text-primary-600'
+                        ? 'bg-gray-700 text-primary-400'
+                        : 'text-gray-400 hover:text-primary-400'
                     }`}
                   >
                     {option.label}
@@ -150,7 +150,7 @@ function App() {
         </Tab.Group>
       </main>
 
-      <footer className="max-w-7xl mx-auto mt-16 py-8 border-t border-gray-200 text-center text-gray-500">
+      <footer className="max-w-7xl mx-auto mt-16 py-8 border-t border-gray-700 text-center text-gray-400">
         <p>Get insights about your Spotify listening habits</p>
       </footer>
     </div>

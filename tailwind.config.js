@@ -28,6 +28,19 @@ export default {
           800: "#86198f",
           900: "#701a75",
         },
+        gray: {
+          50: "#f9fafb",
+          100: "#f3f4f6",
+          200: "#e5e7eb",
+          300: "#d1d5db",
+          400: "#9ca3af",
+          500: "#6b7280",
+          600: "#4b5563",
+          700: "#374151",
+          800: "#1f2937",
+          900: "#111827",
+          950: "#030712",
+        },
       },
       fontFamily: {
         sans: ["Inter var", "sans-serif"],
@@ -48,6 +61,9 @@ export default {
             "background-position": "right center",
           },
         },
+      },
+      backgroundColor: {
+        dark: "#121212", // Spotify-like dark background
       },
     },
   },

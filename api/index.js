@@ -2,6 +2,7 @@ import express from "express"
 import cors from "cors"
 import SpotifyWebApi from "spotify-web-api-node"
 import dotenv from "dotenv"
+import serverless from "serverless-http"
 
 dotenv.config()
 
@@ -23,11 +24,11 @@ const spotifyApi = new SpotifyWebApi({
   redirectUri: process.env.SPOTIFY_REDIRECT_URI,
 })
 
-app.get("/", (req, res) => {
+app.get("/api", (req, res) => {
   res.json({ message: "Mood Tunes API is running" })
 })
 
-app.get("/login", (req, res) => {
+app.get("/api/login", (req, res) => {
   const scopes = [
     "user-read-private",
     "user-read-email",
@@ -44,7 +45,7 @@ app.get("/login", (req, res) => {
   res.json({ url: authorizeURL })
 })
 
-app.get("/callback", async (req, res) => {
+app.get("/api/callback", async (req, res) => {
   const { code, error } = req.query
 
   if (error) {
@@ -66,8 +67,7 @@ app.get("/callback", async (req, res) => {
   }
 })
 
-// Get user profile
-app.get("/me", async (req, res) => {
+app.get("/api/me", async (req, res) => {
   const authHeader = req.headers.authorization
 
   if (!authHeader?.startsWith("Bearer ")) {
@@ -79,7 +79,6 @@ app.get("/me", async (req, res) => {
   try {
     const token = authHeader.split(" ")[1]
     spotifyApi.setAccessToken(token)
-
     const data = await spotifyApi.getMe()
     res.json(data.body)
   } catch (error) {
@@ -87,8 +86,7 @@ app.get("/me", async (req, res) => {
   }
 })
 
-// Get user's top tracks
-app.get("/top-tracks", async (req, res) => {
+app.get("/api/top-tracks", async (req, res) => {
   const { time_range = "short_term" } = req.query
   const authHeader = req.headers.authorization
 
@@ -101,12 +99,10 @@ app.get("/top-tracks", async (req, res) => {
   try {
     const token = authHeader.split(" ")[1]
     spotifyApi.setAccessToken(token)
-
     const data = await spotifyApi.getMyTopTracks({
       limit: 20,
-      time_range, // short_term (4 weeks), medium_term (6 months), long_term (years)
+      time_range,
     })
-
     const tracks = data.body.items.map((track) => ({
       id: track.id,
       name: track.name,
@@ -117,15 +113,13 @@ app.get("/top-tracks", async (req, res) => {
       external_url: track.external_urls.spotify,
       popularity: track.popularity,
     }))
-
     res.json(tracks)
   } catch (error) {
     handleApiError(error, res)
   }
 })
 
-// Get user's top artists
-app.get("/top-artists", async (req, res) => {
+app.get("/api/top-artists", async (req, res) => {
   const { time_range = "short_term" } = req.query
   const authHeader = req.headers.authorization
 
@@ -138,12 +132,10 @@ app.get("/top-artists", async (req, res) => {
   try {
     const token = authHeader.split(" ")[1]
     spotifyApi.setAccessToken(token)
-
     const data = await spotifyApi.getMyTopArtists({
       limit: 20,
       time_range,
     })
-
     const artists = data.body.items.map((artist) => ({
       id: artist.id,
       name: artist.name,
@@ -152,15 +144,13 @@ app.get("/top-artists", async (req, res) => {
       popularity: artist.popularity,
       external_url: artist.external_urls.spotify,
     }))
-
     res.json(artists)
   } catch (error) {
     handleApiError(error, res)
   }
 })
 
-// Get user's recently played tracks
-app.get("/recently-played", async (req, res) => {
+app.get("/api/recently-played", async (req, res) => {
   const authHeader = req.headers.authorization
 
   if (!authHeader?.startsWith("Bearer ")) {
@@ -172,9 +162,7 @@ app.get("/recently-played", async (req, res) => {
   try {
     const token = authHeader.split(" ")[1]
     spotifyApi.setAccessToken(token)
-
     const data = await spotifyApi.getMyRecentlyPlayedTracks({ limit: 50 })
-
     const tracks = data.body.items.map((item) => ({
       id: item.track.id,
       name: item.track.name,
@@ -184,15 +172,12 @@ app.get("/recently-played", async (req, res) => {
       played_at: item.played_at,
       external_url: item.track.external_urls.spotify,
     }))
-
-    // Group tracks by hour of day
     const tracksByHour = tracks.reduce((acc, track) => {
       const hour = new Date(track.played_at).getHours()
       if (!acc[hour]) acc[hour] = []
       acc[hour].push(track)
       return acc
     }, {})
-
     res.json({
       tracks,
       analytics: {
@@ -206,8 +191,7 @@ app.get("/recently-played", async (req, res) => {
   }
 })
 
-// Get user's current playing track
-app.get("/now-playing", async (req, res) => {
+app.get("/api/now-playing", async (req, res) => {
   const authHeader = req.headers.authorization
 
   if (!authHeader?.startsWith("Bearer ")) {
@@ -219,13 +203,10 @@ app.get("/now-playing", async (req, res) => {
   try {
     const token = authHeader.split(" ")[1]
     spotifyApi.setAccessToken(token)
-
     const data = await spotifyApi.getMyCurrentPlayingTrack()
-
     if (!data.body || !data.body.item) {
       return res.json(null)
     }
-
     const track = {
       id: data.body.item.id,
       name: data.body.item.name,
@@ -237,7 +218,6 @@ app.get("/now-playing", async (req, res) => {
       external_url: data.body.item.external_urls.spotify,
       is_playing: data.body.is_playing,
     }
-
     res.json(track)
   } catch (error) {
     handleApiError(error, res)
@@ -246,18 +226,15 @@ app.get("/now-playing", async (req, res) => {
 
 function handleApiError(error, res) {
   console.error("API Error:", error)
-
   if (error.statusCode === 401) {
     return res.status(401).json({ error: "Token expired or invalid" })
   }
-
   if (error.statusCode === 429) {
     return res.status(429).json({
       error: "Too many requests. Please try again later.",
       retryAfter: error.headers?.["retry-after"] || 30,
     })
   }
-
   res.status(error.statusCode || 500).json({
     error: error.message || "An error occurred",
     details:
@@ -265,7 +242,5 @@ function handleApiError(error, res) {
   })
 }
 
-const PORT = process.env.PORT || 3001
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`)
-})
+const handler = serverless(app)
+export default handler

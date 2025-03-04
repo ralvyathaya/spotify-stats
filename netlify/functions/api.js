@@ -20,12 +20,12 @@ const spotifyApi = new SpotifyWebApi({
 })
 
 // Root API route
-app.get("/.netlify/functions/api", (req, res) => {
+app.get("/", (req, res) => {
   res.json({ message: "Mood Tunes API is running" })
 })
 
 // Login route
-app.get("/.netlify/functions/api/login", (req, res) => {
+app.get("/login", (req, res) => {
   const scopes = [
     "user-read-private",
     "user-read-email",
@@ -43,7 +43,7 @@ app.get("/.netlify/functions/api/login", (req, res) => {
 })
 
 // Callback route
-app.get("/.netlify/functions/api/callback", async (req, res) => {
+app.get("/callback", async (req, res) => {
   const { code, error } = req.query
 
   if (error) {
@@ -65,7 +65,7 @@ app.get("/.netlify/functions/api/callback", async (req, res) => {
   }
 })
 
-app.get("/.netlify/functions/api/me", async (req, res) => {
+app.get("/me", async (req, res) => {
   const authHeader = req.headers.authorization
 
   if (!authHeader?.startsWith("Bearer ")) {
@@ -88,7 +88,7 @@ app.get("/.netlify/functions/api/me", async (req, res) => {
   }
 })
 
-app.get("/.netlify/functions/api/top-tracks", async (req, res) => {
+app.get("/top-tracks", async (req, res) => {
   const { time_range = "short_term" } = req.query
   const authHeader = req.headers.authorization
 
@@ -125,7 +125,7 @@ app.get("/.netlify/functions/api/top-tracks", async (req, res) => {
   }
 })
 
-app.get("/.netlify/functions/api/top-artists", async (req, res) => {
+app.get("/top-artists", async (req, res) => {
   const { time_range = "short_term" } = req.query
   const authHeader = req.headers.authorization
 
@@ -160,7 +160,7 @@ app.get("/.netlify/functions/api/top-artists", async (req, res) => {
   }
 })
 
-app.get("/.netlify/functions/api/recently-played", async (req, res) => {
+app.get("/recently-played", async (req, res) => {
   const authHeader = req.headers.authorization
 
   if (!authHeader?.startsWith("Bearer ")) {
@@ -205,7 +205,7 @@ app.get("/.netlify/functions/api/recently-played", async (req, res) => {
   }
 })
 
-app.get("/.netlify/functions/api/now-playing", async (req, res) => {
+app.get("/now-playing", async (req, res) => {
   const authHeader = req.headers.authorization
 
   if (!authHeader?.startsWith("Bearer ")) {

@@ -12,6 +12,14 @@
   from = "/*"
   to = "/index.html"
   status = 200
+  force = false
+  conditions = {Path = "!/api/*"}
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
 
 [functions]
   node_bundler = "esbuild"

@@ -265,11 +265,7 @@ function handleApiError(error, res) {
   })
 }
 
-if (!process.env.VERCEL) {
-  const PORT = process.env.PORT || 3001
-  app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`)
-  })
-}
-
-export default app // Export for Vercel serverless function
+const PORT = process.env.PORT || 3001
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`)
+})

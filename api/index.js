@@ -8,6 +8,7 @@ dotenv.config()
 
 const app = express()
 
+// Middleware
 app.use(
   cors({
     origin: process.env.CLIENT_URL,
@@ -15,19 +16,21 @@ app.use(
     credentials: true,
   })
 )
-
 app.use(express.json())
 
+// Spotify API setup
 const spotifyApi = new SpotifyWebApi({
   clientId: process.env.SPOTIFY_CLIENT_ID,
   clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
   redirectUri: process.env.SPOTIFY_REDIRECT_URI,
 })
 
+// Root API route
 app.get("/api", (req, res) => {
   res.json({ message: "Mood Tunes API is running" })
 })
 
+// Login route
 app.get("/api/login", (req, res) => {
   const scopes = [
     "user-read-private",
@@ -45,6 +48,7 @@ app.get("/api/login", (req, res) => {
   res.json({ url: authorizeURL })
 })
 
+// Callback route
 app.get("/api/callback", async (req, res) => {
   const { code, error } = req.query
 

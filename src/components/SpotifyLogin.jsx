@@ -1,20 +1,28 @@
 import React from "react";
 import { FaSpotify } from "react-icons/fa";
 
-function SpotifyLogin({ onLogin }) {
+function SpotifyLogin() {
   const handleLogin = async () => {
     try {
-      const response = await fetch("/api/login");
+      const response = await fetch("/api/login", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
       if (!response.ok) {
         const text = await response.text();
         console.error("Error response from /api/login:", text);
-        throw new Error("Failed to fetch login URL");
+        throw new Error(`Failed to fetch login URL: ${response.status} ${response.statusText}`);
       }
+
       const data = await response.json();
       if (data.url) {
         window.location.href = data.url;
       } else {
-        console.error("No login URL received");
+        console.error("No login URL received in response:", data);
+        throw new Error("No login URL provided by the server");
       }
     } catch (error) {
       console.error("Error during login:", error);

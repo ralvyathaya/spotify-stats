@@ -1,10 +1,11 @@
 import React from "react";
 import { FaSpotify } from "react-icons/fa";
+import { API_BASE_URL } from "../config";
 
 function SpotifyLogin() {
   const handleLogin = async () => {
     try {
-      const response = await fetch("/api/login", {
+      const response = await fetch(`${API_BASE_URL}/login`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -13,7 +14,7 @@ function SpotifyLogin() {
 
       if (!response.ok) {
         const text = await response.text();
-        console.error("Error response from /api/login:", text);
+        console.error("Error response from login:", text);
         throw new Error(`Failed to fetch login URL: ${response.status} ${response.statusText}`);
       }
 

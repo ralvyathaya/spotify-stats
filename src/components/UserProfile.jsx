@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Menu } from '@headlessui/react';
 import { FaUser, FaSignOutAlt } from 'react-icons/fa';
+import { API_BASE_URL } from '../config';
 
 function UserProfile({ accessToken, onLogout }) {
   const [user, setUser] = useState(null);
@@ -9,7 +10,7 @@ function UserProfile({ accessToken, onLogout }) {
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
-        const response = await fetch('/api/me', {
+        const response = await fetch(`${API_BASE_URL}/me`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`
           }

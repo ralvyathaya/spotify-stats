@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaSpotify, FaUser, FaGlobe, FaHashtag } from 'react-icons/fa';
 import { IoMusicalNotes } from 'react-icons/io5';
+import { API_BASE_URL } from '../config';
 
 function TopArtists({ accessToken, timeRange }) {
   const [artists, setArtists] = useState([]);
@@ -11,7 +12,7 @@ function TopArtists({ accessToken, timeRange }) {
     const fetchTopArtists = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/top-artists?time_range=${timeRange}`, {
+        const response = await fetch(`${API_BASE_URL}/top-artists?time_range=${timeRange}`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`
           }

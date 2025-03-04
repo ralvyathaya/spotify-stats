@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaSpotify, FaClock } from 'react-icons/fa';
 import { Bar } from 'react-chartjs-2';
+import { API_BASE_URL } from '../config';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -37,7 +38,7 @@ function RecentlyPlayed({ accessToken }) {
     const fetchRecentlyPlayed = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/recently-played?time_range=${timeRange}`, {
+        const response = await fetch(`${API_BASE_URL}/recently-played?time_range=${timeRange}`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
           },

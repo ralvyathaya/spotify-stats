@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaSpotify, FaPlay, FaPause, FaVolumeUp } from 'react-icons/fa';
+import { API_BASE_URL } from '../config';
 
 function NowPlaying({ accessToken }) {
   const [track, setTrack] = useState(null);
@@ -10,7 +11,7 @@ function NowPlaying({ accessToken }) {
     // Set up polling for currently playing track
     const fetchNowPlaying = async () => {
       try {
-        const response = await fetch('/api/now-playing', {
+        const response = await fetch(`${API_BASE_URL}/now-playing`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`
           }

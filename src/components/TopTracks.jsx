@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FaSpotify, FaPlay, FaCompactDisc, FaCalendarAlt, FaClock } from 'react-icons/fa';
 import { IoTrendingUp } from 'react-icons/io5';
 import { BsMusicNoteBeamed } from 'react-icons/bs';
+import { API_BASE_URL } from '../config';
 
 function TopTracks({ accessToken, timeRange }) {
   const [tracks, setTracks] = useState([]);
@@ -12,7 +13,7 @@ function TopTracks({ accessToken, timeRange }) {
     const fetchTopTracks = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/top-tracks?time_range=${timeRange}`, {
+        const response = await fetch(`${API_BASE_URL}/top-tracks?time_range=${timeRange}`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`
           }

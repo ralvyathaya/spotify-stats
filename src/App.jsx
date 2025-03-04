@@ -1,31 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import SpotifyLogin from './components/SpotifyLogin';
-import TopTracks from './components/TopTracks';
-import TopArtists from './components/TopArtists';
-import RecentlyPlayed from './components/RecentlyPlayed';
-import NowPlaying from './components/NowPlaying';
-import UserProfile from './components/UserProfile';
-import { Tab } from '@headlessui/react';
+import React, { useState, useEffect } from "react";
+import SpotifyLogin from "./components/SpotifyLogin";
+import TopTracks from "./components/TopTracks";
+import TopArtists from "./components/TopArtists";
+import RecentlyPlayed from "./components/RecentlyPlayed";
+import NowPlaying from "./components/NowPlaying";
+import UserProfile from "./components/UserProfile";
+import { Tab } from "@headlessui/react";
 
 function App() {
   const [accessToken, setAccessToken] = useState(null);
   const [error, setError] = useState(null);
-  const [timeRange, setTimeRange] = useState('short_term');
+  const [timeRange, setTimeRange] = useState("short_term");
   const [selectedTab, setSelectedTab] = useState(0);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('access_token');
-    const error = urlParams.get('error');
-    
+    const token = urlParams.get("access_token");
+    const error = urlParams.get("error");
+
     if (error) {
-      setError('Failed to authenticate with Spotify');
-      localStorage.removeItem('spotify_access_token');
+      setError("Failed to authenticate with Spotify");
+      localStorage.removeItem("spotify_access_token");
     } else if (token) {
       handleLogin(token);
       window.history.replaceState({}, document.title, window.location.pathname);
     } else {
-      const storedToken = localStorage.getItem('spotify_access_token');
+      const storedToken = localStorage.getItem("spotify_access_token");
       if (storedToken) {
         setAccessToken(storedToken);
       }
@@ -35,24 +35,18 @@ function App() {
   const handleLogin = (token) => {
     setAccessToken(token);
     setError(null);
-    localStorage.setItem('spotify_access_token', token);
+    localStorage.setItem("spotify_access_token", token);
   };
 
   const handleLogout = () => {
     setAccessToken(null);
-    localStorage.removeItem('spotify_access_token');
+    localStorage.removeItem("spotify_access_token");
   };
 
   const timeRangeOptions = [
-    { value: 'short_term', label: '4 Weeks' },
-    { value: 'medium_term', label: '6 Months' },
-    { value: 'long_term', label: 'All Time' }
-  ];
-
-  const recentlyPlayedOptions = [
-    { value: '24h', label: 'Last 24 Hours' },
-    { value: '7d', label: 'Last 7 Days' },
-    { value: '30d', label: 'Last 30 Days' }
+    { value: "short_term", label: "4 Weeks" },
+    { value: "medium_term", label: "6 Months" },
+    { value: "long_term", label: "All Time" },
   ];
 
   if (!accessToken) {
@@ -88,45 +82,51 @@ function App() {
         <Tab.Group onChange={setSelectedTab}>
           <div className="flex flex-col md:flex-row gap-6 mb-8">
             <Tab.List className="flex gap-2 p-1 bg-gray-700 rounded-lg">
-              <Tab className={({ selected }) =>
-                `px-4 py-2 rounded-md font-medium transition-all ${
-                  selected
-                    ? 'bg-gray-800 text-primary-400 shadow'
-                    : 'text-gray-400 hover:text-primary-400'
-                }`
-              }>
+              <Tab
+                className={({ selected }) =>
+                  `px-4 py-2 rounded-md font-medium transition-all ${
+                    selected
+                      ? "bg-gray-800 text-primary-400 shadow"
+                      : "text-gray-400 hover:text-primary-400"
+                  }`
+                }
+              >
                 Top Tracks
               </Tab>
-              <Tab className={({ selected }) =>
-                `px-4 py-2 rounded-md font-medium transition-all ${
-                  selected
-                    ? 'bg-gray-800 text-primary-400 shadow'
-                    : 'text-gray-400 hover:text-primary-400'
-                }`
-              }>
+              <Tab
+                className={({ selected }) =>
+                  `px-4 py-2 rounded-md font-medium transition-all ${
+                    selected
+                      ? "bg-gray-800 text-primary-400 shadow"
+                      : "text-gray-400 hover:text-primary-400"
+                  }`
+                }
+              >
                 Top Artists
               </Tab>
-              <Tab className={({ selected }) =>
-                `px-4 py-2 rounded-md font-medium transition-all ${
-                  selected
-                    ? 'bg-gray-800 text-primary-400 shadow'
-                    : 'text-gray-400 hover:text-primary-400'
-                }`
-              }>
+              <Tab
+                className={({ selected }) =>
+                  `px-4 py-2 rounded-md font-medium transition-all ${
+                    selected
+                      ? "bg-gray-800 text-primary-400 shadow"
+                      : "text-gray-400 hover:text-primary-400"
+                  }`
+                }
+              >
                 Recently Played
               </Tab>
             </Tab.List>
 
             {selectedTab !== 2 && (
               <div className="flex gap-2">
-                {timeRangeOptions.map(option => (
+                {timeRangeOptions.map((option) => (
                   <button
                     key={option.value}
                     onClick={() => setTimeRange(option.value)}
                     className={`px-4 py-2 rounded-md font-medium transition-all ${
                       timeRange === option.value
-                        ? 'bg-gray-700 text-primary-400'
-                        : 'text-gray-400 hover:text-primary-400'
+                        ? "bg-gray-700 text-primary-400"
+                        : "text-gray-400 hover:text-primary-400"
                     }`}
                   >
                     {option.label}

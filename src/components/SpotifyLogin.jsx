@@ -1,19 +1,23 @@
-// SpotifyLogin.jsx
-import React from 'react';
-import { FaSpotify } from 'react-icons/fa';
+import React from "react";
+import { FaSpotify } from "react-icons/fa";
 
 function SpotifyLogin({ onLogin }) {
   const handleLogin = async () => {
     try {
-      const response = await fetch('/api/login');
+      const response = await fetch("/api/login");
+      if (!response.ok) {
+        const text = await response.text();
+        console.error("Error response from /api/login:", text);
+        throw new Error("Failed to fetch login URL");
+      }
       const data = await response.json();
       if (data.url) {
         window.location.href = data.url;
       } else {
-        console.error('No login URL received');
+        console.error("No login URL received");
       }
     } catch (error) {
-      console.error('Error during login:', error);
+      console.error("Error during login:", error);
     }
   };
 
@@ -21,7 +25,7 @@ function SpotifyLogin({ onLogin }) {
     <div className="flex flex-col items-center gap-6">
       <div className="relative group">
         <div className="absolute -inset-0.5 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-lg blur opacity-60 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse-slow"></div>
-        <button 
+        <button
           onClick={handleLogin}
           className="relative flex items-center gap-3 px-8 py-4 bg-white rounded-lg leading-none"
         >

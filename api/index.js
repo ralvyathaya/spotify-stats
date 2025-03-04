@@ -82,7 +82,11 @@ app.get("/api/me", async (req, res) => {
     const data = await spotifyApi.getMe()
     res.json(data.body)
   } catch (error) {
-    handleApiError(error, res)
+    console.error("API Error:", error)
+    if (error.statusCode === 401) {
+      return res.status(401).json({ error: "Token expired or invalid" })
+    }
+    res.status(error.statusCode || 500).json({ error: "An error occurred" })
   }
 })
 
@@ -115,7 +119,11 @@ app.get("/api/top-tracks", async (req, res) => {
     }))
     res.json(tracks)
   } catch (error) {
-    handleApiError(error, res)
+    console.error("API Error:", error)
+    if (error.statusCode === 401) {
+      return res.status(401).json({ error: "Token expired or invalid" })
+    }
+    res.status(error.statusCode || 500).json({ error: "An error occurred" })
   }
 })
 
@@ -146,7 +154,11 @@ app.get("/api/top-artists", async (req, res) => {
     }))
     res.json(artists)
   } catch (error) {
-    handleApiError(error, res)
+    console.error("API Error:", error)
+    if (error.statusCode === 401) {
+      return res.status(401).json({ error: "Token expired or invalid" })
+    }
+    res.status(error.statusCode || 500).json({ error: "An error occurred" })
   }
 })
 
@@ -187,7 +199,11 @@ app.get("/api/recently-played", async (req, res) => {
       },
     })
   } catch (error) {
-    handleApiError(error, res)
+    console.error("API Error:", error)
+    if (error.statusCode === 401) {
+      return res.status(401).json({ error: "Token expired or invalid" })
+    }
+    res.status(error.statusCode || 500).json({ error: "An error occurred" })
   }
 })
 
@@ -220,27 +236,13 @@ app.get("/api/now-playing", async (req, res) => {
     }
     res.json(track)
   } catch (error) {
-    handleApiError(error, res)
+    console.error("API Error:", error)
+    if (error.statusCode === 401) {
+      return res.status(401).json({ error: "Token expired or invalid" })
+    }
+    res.status(error.statusCode || 500).json({ error: "An error occurred" })
   }
 })
-
-function handleApiError(error, res) {
-  console.error("API Error:", error)
-  if (error.statusCode === 401) {
-    return res.status(401).json({ error: "Token expired or invalid" })
-  }
-  if (error.statusCode === 429) {
-    return res.status(429).json({
-      error: "Too many requests. Please try again later.",
-      retryAfter: error.headers?.["retry-after"] || 30,
-    })
-  }
-  res.status(error.statusCode || 500).json({
-    error: error.message || "An error occurred",
-    details:
-      process.env.NODE_ENV === "development" ? error.toString() : undefined,
-  })
-}
 
 const handler = serverless(app)
 export default handler
